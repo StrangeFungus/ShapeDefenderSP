@@ -3,17 +3,12 @@ using SDSPEnums;
 using UnityEngine;
 
 [System.Serializable]
-public class StatEntryContainer : MonoBehaviour
+public class StatEntryContainer
 {
-    [SerializeField] private StatTemplateSO defaultStatEntries;
+    [SerializeField] private StatDefaultTemplateSO defaultStatEntries;
 
     private Dictionary<StatName, StatEntry> statEntryDictionary = new();
     public IReadOnlyDictionary<StatName, StatEntry> StatEntryDictionary => statEntryDictionary;
-
-    private void Awake()
-    {
-        InitializeStatEntryDict();
-    }
 
     public void InitializeStatEntryDict()
     {
@@ -25,6 +20,16 @@ public class StatEntryContainer : MonoBehaviour
                 {
                     AddStatEntry(entry);
                 }
+
+                if (statEntryDictionary.TryGetValue(StatName.MaxHealthPointsValue, out var maxHpEntry))
+                {
+                    if (!statEntryDictionary.ContainsKey(StatName.CurrentHealthPointsValue))
+                    {
+                        StatEntry copiedEntry = StatEntry.CopyStatEntry(maxHpEntry, StatName.CurrentHealthPointsValue);
+
+                        AddStatEntry(copiedEntry);
+                    }
+                }
             }
         }
     }
@@ -33,9 +38,24 @@ public class StatEntryContainer : MonoBehaviour
     {
         if (!statEntryDictionary.TryGetValue(statName, out var entry))
         {
-            Debug.LogWarning($"Stat {statName} not found in {gameObject.name}'s stat container.");
+            entry = new StatEntry(statName, 0.0f);
         }
+
         return entry;
+    }
+
+    public float GetStatEntriesTotalValue(StatName statName)
+    {
+        StatEntry statEntry = GetStatEntry(statName);
+
+        if (statEntry == null)
+        {
+            return 0.0f;
+        }
+        else
+        {
+            return statEntry.StatsTotalValue;
+        }        
     }
 
     public void AddStatEntry(StatEntry newStatEntry)
@@ -52,6 +72,21 @@ public class StatEntryContainer : MonoBehaviour
         {
             statEntryDictionary.Remove(statName);
         }
+    }
+
+    public StatEntryContainer CopyStatEntryDict(StatEntryContainer statEntryContainer)
+    {
+        StatEntryContainer copiedStatEntryContainer = new();
+
+        if (statEntryContainer != null)
+        {
+            foreach (var stat in statEntryContainer.statEntryDictionary)
+            {
+                copiedStatEntryContainer.AddStatEntry(stat.Value);
+            }
+        }
+
+        return copiedStatEntryContainer;
     }
 
     public void ResetStatEntryDict()

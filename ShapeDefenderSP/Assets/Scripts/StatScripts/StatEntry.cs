@@ -1,6 +1,6 @@
 using System.Collections.Generic;
-using UnityEngine;
 using SDSPEnums;
+using UnityEngine;
 
 [System.Serializable]
 public class StatEntry
@@ -17,17 +17,17 @@ public class StatEntry
     private Dictionary<StatusEffectName, Dictionary<int, StatEntryModifier>> statEntryModifiers = new();
     public IReadOnlyDictionary<StatusEffectName, Dictionary<int, StatEntryModifier>> StatEntryModifiers => statEntryModifiers;
 
-    private bool isDirty = true;
+    private bool isStatsTotalValueDirty = true;
     private float cachedStatTotal;
 
     public float StatsTotalValue
     {
         get
         {
-            if (isDirty)
+            if (isStatsTotalValueDirty)
             {
                 cachedStatTotal = RecalculateStatsTotalValue();
-                isDirty = false;
+                isStatsTotalValueDirty = false;
             }
 
             return cachedStatTotal;
@@ -63,7 +63,7 @@ public class StatEntry
         return (baseValue + totalModifyingValue) * (1f + (totalModifyingPercent / 100f));
     }
 
-    public void ModifyValue(StatModificationAction statModificationAction, float? incomingBaseValue = null)
+    public void ModifyBaseValue(StatModificationAction statModificationAction, float? incomingBaseValue = null)
     {
         if (incomingBaseValue.HasValue)
         {
@@ -82,7 +82,7 @@ public class StatEntry
                     break;
             }
 
-            isDirty = true;
+            isStatsTotalValueDirty = true;
         }
     }
 
@@ -98,7 +98,7 @@ public class StatEntry
             statEntryModifiers[statusEffectsName].Add(stacksNumber, newStatEntryModifier);
         }
 
-        isDirty = true;
+        isStatsTotalValueDirty = true;
     }
     
     public void RemoveModifierStatusEffect(StatusEffectName statusEffectsName)
@@ -108,10 +108,10 @@ public class StatEntry
             statEntryModifiers.Remove(statusEffectsName);
         }
 
-        isDirty = true;
+        isStatsTotalValueDirty = true;
     }
 
-    public void RemoveModifierStack(StatusEffectName statusEffectsName, int stacksNumber)
+    public void RemoveModifierStatusEffectStack(StatusEffectName statusEffectsName, int stacksNumber)
     {
         if (statEntryModifiers.ContainsKey(statusEffectsName))
         {
@@ -127,7 +127,7 @@ public class StatEntry
         }
         else
         {
-            isDirty = true;
+            isStatsTotalValueDirty = true;
         }
     }
 
@@ -136,14 +136,17 @@ public class StatEntry
         baseValue = startingBaseValue;
         statEntryModifiers.Clear();
 
-        isDirty = true;
+        isStatsTotalValueDirty = true;
     }
 
-    public static StatEntry CopyStatEntry(StatEntry statEntryToCopy)
+    public static StatEntry CopyStatEntry(StatEntry statEntryToCopy, StatName? alterStatsName = null)
     {
         if (statEntryToCopy != null)
         {
-            StatEntry newStatEntry = new(statEntryToCopy.statsName, statEntryToCopy.baseValue);
+            StatName statsNameToCopy = statEntryToCopy.StatsName;
+            if (alterStatsName != null) { statsNameToCopy = (StatName)alterStatsName; }
+
+            StatEntry newStatEntry = new StatEntry(statsNameToCopy, statEntryToCopy.baseValue);
             foreach (var entry in statEntryToCopy.statEntryModifiers)
             {
                 foreach (var entryStack in entry.Value)
@@ -155,6 +158,7 @@ public class StatEntry
             return newStatEntry;
         }
 
+        Debug.LogWarning($"CopyStatEntry's stat entry to copy was null.");
         return new StatEntry(StatName.Default, 0.0f);
     }
 }

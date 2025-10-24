@@ -2,9 +2,112 @@ using System;
 
 namespace SDSPEnums
 {
-    [Flags]
-    public enum EntityMaterialTypes
+    public enum StatName
     {
+        Default,
+
+        // Health Related:
+        CurrentHealthPointsValue,
+        MaxHealthPointsValue,
+        HealthRegenAmountValue,
+        HealthRegenCooldownTimer,
+        HealthPointsStolenOnHitPercent,
+        HealthPointsStolenOnKillPercent,
+        CurrentOverhealCapacityValue,
+        MaxOverhealCapacityValue,
+        CurrentEnergyShieldValue,
+        MaxEnergyShieldValue,
+        EnergyShieldRegenAmountValue,
+        EnergyShieldRegenCooldownTimer,
+        EnergyShieldStolenOnHitPercent,
+        EnergyShieldStolenOnKillPercent,
+
+        // Offensive Related:
+        AttackRangeValue,
+        AttackCooldownTimer,
+        AttackAccuracySpreadValue,
+        MinimumAttackDamageValue,
+        MaximumAttackDamageValue,
+        CriticalHitChancePercent,
+        CriticalHitDamageMultiplier,
+        IgnoreArmorAmountValue,
+        MultistrikeChancePercent,
+        MaxMultistrikeHitsComboValue,
+        ProjectileSpeedValue,
+        ProjectileCountValue,
+        ProjectilePierceCountValue,
+        SplashDamageRadiusValue,
+        StatusEffectInflictionChancePercent,
+        StatusEffectStackDurationTimer,
+        AreaOfEffectRadiusValue,
+        DamageOverTimeHitRateTimer,
+
+        // Defensive Related:
+        ParryAttackChancePercent,
+        ParryCooldownTimer,
+        CounterAttackChancePercent,
+        BlockChancePercent,
+        BlockCooldownTimer,
+        BlockAmountValue,
+        ReflectAttackChancePercent,
+        ReflectedAttackDamageMultiplier,
+        ArmorValue,
+        ThornsDamageValue,
+        CriticalHitResistancePercent,
+        CriticalDamageResistancePercent,
+        DodgeCooldownTimer,
+        DodgeChancePercent,
+        StatusEffectInflictionResistanceValue,
+
+        // Resistance Related:
+        MagicResistanceValue,
+        RangedResistanceValue,
+        MeleeResistanceValue,
+        BurnResistanceValue,
+        SlowResistanceValue,
+        FreezeChillResistanceValue,
+        StunResistanceValue,
+        BlindResistanceValue,
+        BleedResistanceValue,
+        FearResistanceValue,
+        SilenceResistanceValue,
+
+        // Movement Related:
+        GroundMovementSpeedValue,
+        DashDistanceValue,
+        DashChargesValue,
+        DashSpeedValue,
+        SwimSpeedValue,
+        FlyingSpeedValue,
+        SpaceTravelSpeedValue,
+
+        // Utility Related: (From Tower Upgrades)
+        XPGainMultiplierValue,
+        GoldGainMultiplierValue,
+        BuffDurationMultiplier,
+        DebuffDurationMultiplier,
+        SummonsBonusHealthPercent,
+        SummonsLimitValue,
+        SummonsDamageBonusPercent,
+
+        // Progression Stats:
+        LevelValue,
+        CurrentExperienceValue,
+        ExperienceNeededForNextLevelValue,
+        PrestigeLevelValue,
+    }
+
+    public enum StatModificationAction
+    {
+        AddToValue,
+        SubtractFromValue,
+        SetValueTo
+    }
+
+    [Flags]
+    public enum MaterialType
+    {
+        None = 0,
         Organic = 1 << 0,
         Rubber = 1 << 1,
         Plastic = 1 << 2,
@@ -65,145 +168,260 @@ namespace SDSPEnums
         Boss // + Health, + Damage, + Resistances, + SpecialAbilities, - Speed. Powerful unique enemy with multiple strengths.
     }
 
-
-    public enum StatName
+    public enum SpawningPattern
     {
-        Default,
-
-        // Health Related:
-        CurrentHealthPointsValue,
-        MaxHealthPointsValue,
-        HealthRegenAmountValue,
-        HealthRegenCooldownTimer,
-        HealthPointsStolenOnHitPercent,
-        HealthPointsStolenOnKillPercent,
-        CurrentOverhealCapacityValue,
-        MaxOverhealCapacityValue,
-        CurrentEnergyShieldValue,
-        MaxEnergyShieldValue,
-        EnergyShieldRegenAmountValue,
-        EnergyShieldRegenCooldownTimer,
-        EnergyShieldStolenOnHitPercent,
-        EnergyShieldStolenOnKillPercent,
-
-        // Offensive Related:
-        AttackRangeValue,
-        AttackCooldownTimer,
-        AttackAccuracySpreadValue,
-        MinimumAttackDamageValue,
-        MaximumAttackDamageValue,
-        CriticalHitChancePercent,
-        CriticalHitDamageMultiplier,
-        IgnoreArmorAmountValue,
-        MultistrikeChancePercent,
-        MaxMultistrikeHitsComboValue,
-        ProjectileSpeedValue,
-        ProjectileCountValue,
-        ProjectilePierceCountValue,
-        SplashDamageRadiusValue,
-        StatusEffectInflictionChancePercent,
-        StatusEffectDurationTimer,
-        StatusEffectDamageValue,
-        StatusEffectDamageHitRateTimer,
-        StatusEffectDistanceOrRadiusValue,
-        AreaOfEffectRadiusValue,
-
-        // Defensive Related:
-        ParryAttackChancePercent,
-        ParryCooldownTimer,
-        CounterAttackChancePercent,
-        BlockChancePercent,
-        BlockCooldownTimer,
-        BlockAmountValue,
-        ReflectDamageChancePercent,
-        ReflectDamageAmountValue,
-        ArmorValue,
-        ThornsDamageValue,
-        CriticalHitResistancePercent,
-        CriticalDamageResistancePercent,
-        DodgeCooldownTimer,
-        DodgeChancePercent,
-        StatusEffectInflictionResistanceValue,
-
-        // Resistance Related:
-        MagicResistanceValue,
-        RangedResistanceValue,
-        MeleeResistanceValue,
-        BurnResistanceValue,
-        SlowResistanceValue,
-        FreezeChillResistanceValue,
-        StunResistanceValue,
-        BlindResistanceValue,
-        BleedResistanceValue,
-        FearResistanceValue,
-        SilenceResistanceValue,
-
-        // Movement Related:
-        GroundMovementSpeedValue,
-        DashDistanceValue,
-        DashChargesValue,
-        DashSpeedValue,
-        SwimSpeedValue,
-        FlyingSpeedValue,
-        SpaceTravelSpeedValue,
-
-        // Utility Related: (From Tower Upgrades)
-        XPGainMultiplierValue,
-        GoldGainMultiplierValue,
-        BuffDurationMultiplier,
-        DebuffDurationMultiplier,
-        SummonsBonusHealthPercent,
-        SummonsLimitValue,
-        SummonsDamageBonusPercent,
-
-        // Progression Stats:
-        LevelValue,
-        CurrentExperienceValue,
-        ExperienceNeededForNextLevelValue,
-        PrestigeLevelValue,
+        Radial,
+        Arc,
+        Line,
+        Row,
+        Grid,
+        Spiral,
+        Linked,
+        Mirror,
+        RandomScatter,
+        DirectionalScatter,
+        DirectionalSpread,
     }
 
-    public enum StatModificationAction
+    public enum TargetingPatterns
     {
-        AddToValue,
-        SubtractFromValue,
-        SetValueTo
+        Direct,
+        Directional,
+        Homing,
+        Randomized,
+    }
+
+    public enum MovementPatterns
+    {
+        LinearPath,
+        LerpedFollow,
+        CurvedPath,
+        OscillatingPath,
+        OrbitingCenter,
+        SpiralFromCenter,
+        WanderRandomly,
+        SnapTo,
+        PingPongOffObjects,
+        PingPongOffScreenEdge,
+        HomingPath,
+        Stationary,
+        BurstExpansion,
+        WaveExpansion,
+        RingExpansion,
+    }
+
+    public enum LifetimeDurationRules
+    {
+        TimeBased,
+        HitBased,
+        DistanceBased,
+        ParentLinked,
     }
 
     [Flags]
-    public enum DamageTypes
+    public enum VisualFeedbackBehavior
     {
-        Default = 1 << 0,
+        None = 0,
+        SpawnFlash = 1 << 1,
+        Trail = 1 << 2,
+        Afterimage = 1 << 3,
+        Expand = 1 << 4,
+        Shrink = 1 << 5,
+        Oscillate = 1 << 6,
+        ColorLerp = 1 << 7,
+        RotationSpin = 1 << 8,
+        Billboard = 1 << 9,
+        AttachParticleTo = 1 << 10,
+        ScreenShake = 1 << 11,
+        LightFlash = 1 << 12,
+        SoundTrigger = 1 << 13,
+        ShaderPulse = 1 << 14,
+        ImpactDecal = 1 << 15,
+        ComboAnimation = 1 << 16,
+    }
 
-        Slashing = 1 << 1,
-        Piercing = 1 << 2,
-        Crushing = 1 << 3,
+    public enum AttackName
+    {
+        None,
 
-        Wind = 1 << 4,
-        Water = 1 << 5,
-        Cold = 1 << 6,
-        Earth = 1 << 7,
-        Poison = 1 << 8,
-        Envenom = 1 << 9,
-        Fire = 1 << 10,
-        Electric = 1 << 11,
-        Radiation = 1 << 12,
-        EMP = 1 << 13,
+        //MEDIEVAL MELEE PASSIVE
+        //MEDIEVAL  -- >> MODERN >> SPACE >> ADVANCED SPACE
+        StationaryWallBlades,
+        SpikedWallCollar,
+        StoneGrinder,
+        ThornedVines,
+        PitchCoatedWall,
+        //MEDIEVAL MELEE ACTIVE
+        WallBlades,
+        SpikeTrap,
+        LogRamThrust,
+        BoulderDrop,
+        PoisonCloudBurst,
+        FlamingOilPour,
+        HotTarSplash,
+        SteamVentBlast,
 
-        Shadow = 1 << 14,
-        Light = 1 << 15,
-        Unholy = 1 << 16,
-        Holy = 1 << 17,
+        //MEDIEVAL RANGED PASSIVE
+        TarBubbleVents,
+        SulfurFumeVents,
+        EmberVents,
+        HotCoalsBed,
+        MudSlick,
+        SmokeChimney,
+        //MEDIEVAL RANGED ACTIVE
+        StoneCatapult,
+        BurningLogLauncher,
+        FlamingOilPotLauncher,
+        BarbedNetLauncher,
+        SpringWallTrap,
+        ThornedVinesLauncher,
+        TarSlickDisperser,
+        SmokePelletDropper,
+        CaltropsLauncher,
 
-        Magic = 1 << 18,
-        Ranged = 1 << 19,
-        Melee = 1 << 20,
+        //MEDIEVAL MAGIC PASSIVE
+        ReinforcementRunes,
+        ColdShroud,
+        HeatShroud,
+        CrystalRadiation,
+        HealingMoss,
+        //MEDIEVAL MAGIC ACTIVE
+        WindGust,
+        SparkShower,
+        LightFlash,
+        StonePulse,
+        MistBurst,
+        EchoBlast,
+        DustWhirl,
+        VineLash,
 
-        True = 1 << 21,
+        //MEDIEVAL >> MODERN  -- >> SPACE >> ADVANCED SPACE
+        //More to come...
+    }
+
+    public enum AttackModificationAction
+    {
+        AddNewAttack,
+        RemoveAttack,
+        LevelUp,
+        SetToTrue,
+        SetToFalse
+    }
+
+    public enum AttackTargetingBehaviour
+    {
+        NoTargetObject,
+        TargetLocationVector,
+        LockOnToObject
+    }
+
+    public enum AttackMovementPattern
+    {
+        // I can add more to act like a boomerang and things like that.
+
+        // ENEMY TARGET PATTERNS
+        TargetEnemyDirectly,
+
+        // SELF TARGET PATTERNS
+        OrbitSelf,
+        StaticOnSelf,
+
+        // RANDOM PATTERNS OR NO TARGET PATTERNS
+
+    }
+
+    [Flags]
+    public enum DamageType
+    {
+        Default = 0,
+
+        Slashing = 1 << 0,
+        Piercing = 1 << 1,
+        Crushing = 1 << 2,
+
+        Wind = 1 << 3,
+        Water = 1 << 4,
+        Cold = 1 << 5,
+        Earth = 1 << 6,
+        Poison = 1 << 7,
+        Envenom = 1 << 8,
+        Fire = 1 << 9,
+        Electric = 1 << 10,
+        Radiation = 1 << 11,
+        EMP = 1 << 12,
+
+        Shadow = 1 << 13,
+        Light = 1 << 14,
+        Unholy = 1 << 15,
+        Holy = 1 << 16,
+
+        Magic = 1 << 17,
+        Ranged = 1 << 18,
+        Melee = 1 << 19,
+
+        True = 1 << 20,
+    }
+
+    public enum HealingType
+    {
+        Default = 0,
+
+        EnergyShieldRegen = 1,
+        OverHealthRegen = 2,
+        HealthPointRegen = 3,
+    }
+
+    public enum AreaOfEffectType
+    {
+        Circle, 
+        Square,
+        HorizontalBar,
+        VerticalBar,
+    }
+
+    public enum AreaOfEffectPattern
+    {
+        Line,
+        Wave,
+        Scatter,
+        Twist,
     }
 
     public enum StatusEffectName
     {
         Default,
+
+        PowerSurgeStack,
+        PiercingStrikeStack,
+        CriticalBoostStack,
+        FortifiedStack,
+        RegenerationStack,
+        ResistanceStack,
+        HasteStack,
+        FocusStack,
+        EmpowerStack,
+        InspirationStack,
+        AdaptiveStack,
+        CooldownReductionStack,
+
+        BleedingStack,
+        SlowedStack,
+        PoisoningStack,
+        EnvenomationStack,
+        WeakenedStack,
+        VulnerabilityStack,
+        BurningStack,
+        ChilledStack,
+        ParalyzationStack,
+        BlindedStack,
+        CursedStack,
+        HexedStack,
+        StunEffect,
+        KnockbackEffect,
+        FreezeEffect,
+        FearEffect,
+        ImmobilizeEffect,
     }
+
+
 }
