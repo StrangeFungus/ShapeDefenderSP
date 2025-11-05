@@ -9,8 +9,6 @@ public class BaseAttackController : MonoBehaviour
     public bool IsAttackAbleToBeUsed { get; set; } = true;
 
     // GENERAL DATA
-    private IAttackSequenceManager iAttackSequenceManager;
-
     [SerializeField] private AttackEntry attacksEntry;
     public AttackEntry AttacksEntry => attacksEntry;
 
@@ -19,19 +17,14 @@ public class BaseAttackController : MonoBehaviour
 
     public bool HasMadeFinalHit { get; set; } = false;
 
-    // TARGETING DATA
-    private TargetTrackingContainer targetTrackingData = new();
-    public TargetTrackingContainer TargetTrackingData => targetTrackingData;
-
     // TRACKING DATA
     public Vector3 StartingLocation { get; set; }
 
+    private IDefenseSequenceManager iDefenseSequenceManager;
+
     private void Awake()
     {
-        if (iAttackSequenceManager == null)
-        {
-            iAttackSequenceManager = InterfaceContainer.Request<IAttackSequenceManager>();
-        }
+        iDefenseSequenceManager ??= InterfaceContainer.Request<IDefenseSequenceManager>();
     }
 
     private void Start()
@@ -46,14 +39,6 @@ public class BaseAttackController : MonoBehaviour
         {
             Debug.Log($"AttacksEntry.AttackingEntitiesController was null for the attacks controller target data.");
         }
-
-        if (AttacksEntry != null)
-        {
-            if (AttacksEntry.DoesDamageOverTime)
-            {
-                StartCoroutine(iAttackSequenceManager.DealColliderDamageOverTimeToTargets(this));
-            }
-        }
     }
 
     private void OnTriggerEnter2D(Collider2D collision)
@@ -62,8 +47,14 @@ public class BaseAttackController : MonoBehaviour
         {
             if (collision.gameObject.TryGetComponent<BaseEntityController>(out var baseEntityController))
             {
-                // i need to add the entity from the damage tracker list that is appropriate
-                // either the single damage list or the damage over time list
+                if (AttacksEntry.DoesDamageOverTime)
+                {
+                    iDefenseSequenceManager.ApplyDamageOverTime(this, baseEntityController);
+                }
+                else
+                {
+                    iDefenseSequenceManager.AttemptToDamageTarget(this, baseEntityController);
+                }
             }
         }
 
@@ -74,15 +65,17 @@ public class BaseAttackController : MonoBehaviour
     {
         if (collision.gameObject.TryGetComponent<BaseEntityController>(out var baseEntityController))
         {
-            // i need to remove the entity from the damage tracker list that is appropriate
-            // either the single damage list or the damage over time list
+            if (AttacksEntry.DoesDamageOverTime)
+            {
+                iDefenseSequenceManager.RemoveDamageOverTime(this, baseEntityController);
+            }
         }
     }
 
     public void CopyControllerData(BaseAttackController controllerToCopy)
     {
         IsAttackAbleToBeUsed = controllerToCopy.IsAttackAbleToBeUsed;
-        iAttackSequenceManager = controllerToCopy.iAttackSequenceManager;
+        iDefenseSequenceManager = controllerToCopy.iDefenseSequenceManager;
         attacksEntry = AttackEntry.CopyAttackEntry(controllerToCopy.AttacksEntry);
         timesAttackWasReflected = controllerToCopy.timesAttackWasReflected;
         HasMadeFinalHit = controllerToCopy.HasMadeFinalHit;
@@ -95,7 +88,6 @@ public class BaseAttackController : MonoBehaviour
         timesAttackWasReflected = 0;
         HasMadeFinalHit = false;
         AttacksEntry.AttackingEntitiesController = null;
-        targetTrackingData.ResetData();
     }
 
     private void CheckIfAttackShouldFinishLifeCycle()

@@ -387,6 +387,12 @@ namespace SDSPEnums
         Twist,
     }
 
+    public enum DamageOverTimeUpdateType
+    {
+        AddNew,
+        RemoveOld,
+        SetNewTime
+    }
     public enum StatusEffectName
     {
         Default,

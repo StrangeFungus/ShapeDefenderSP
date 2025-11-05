@@ -15,10 +15,6 @@ public class AttackSequenceManager : MonoBehaviour, IAttackSequenceManager
     
     private static readonly float intStatRoundingCheckAmount = 0.98f;
 
-    private Dictionary<BaseAttackController, Dictionary<BaseEntityController, float>> attacksDoingDamageOverTime = new();
-    private Dictionary<AreaOfEffectController, Dictionary<BaseEntityController, float>> areaOfEffectsDoingDamageOverTime = new();
-    private Dictionary<BaseEntityController, Dictionary<StatusEffectEntry, float>> statusEffectsDoingDamageOverTime = new();
-
     private IStatEntryManager iStatEntryManager;
     private IAttackEntryManager iAttackEntryManager;
     private IDefenseSequenceManager iDefenseSequenceManager;
@@ -256,91 +252,6 @@ public class AttackSequenceManager : MonoBehaviour, IAttackSequenceManager
         chanceToAttackAgain = Mathf.Max(0, chanceToAttackAgain);
 
         return chanceToAttackAgain;
-    }
-
-    // We need an attack sequence for dealing damage to entities over time from projectiles/area of effects
-    // as well as dealing damage over time to entities via status effects.
-
-    // what do I need in order to track projectiles/area of effects as well as status effects damaging entities. 
-    // for projectiles and area of effects we can draw from the colliders current populated list of entities
-    // so, damage them as we add them to the list and track the time they were damaged. if the projectile or aoe is null or has finished dealing damage we can clear 
-    // the entry from the list. This will be easier since we can track the controller/
-
-    // status effects will need more data to track them correctly. Entity to target, status effects on entity, attacker and so on since one entity can apply multiple kinds of dots 
-    
-    
-    // Attack to track, entities to damage, timestap they were last damaged
-    // Attacks track entities inside collider
-
-    public void ApplyDamageOverTime(BaseAttackController baseAttackController)
-    {
-        if (baseAttackController == null) { return; }
-        if (!attacksDoingDamageOverTime.Contains(baseAttackController))
-        {
-            attacksDoingDamageOverTime.Add(baseAttackController);
-        }
-    }
-
-    public void ApplyDamageOverTime(BaseEntityController targetEntitiesController,
-       StatusEffectEntryContainer statusEffectEntryContainerToApply, StatusEffectName statusEffectsName)
-    {
-        if (targetEntitiesController == null) { return; }
-        if (statusEffectEntryContainerToApply == null) { return; }
-        if (statusEffectsName == StatusEffectName.Default) { return; }
-
-        if (!statusEffectsDoingDamageOverTime.ContainsKey(targetEntitiesController))
-        {
-            statusEffectsDoingDamageOverTime.Add(targetEntitiesController, new());
-        }
-
-        if (!statusEffectsDoingDamageOverTime[targetEntitiesController].Contains(statusEffectEntryContainerToApply.StatusEffectsDictionary[statusEffectsName]))
-        {
-            statusEffectsDoingDamageOverTime[targetEntitiesController].Add(statusEffectEntryContainerToApply.StatusEffectsDictionary[statusEffectsName]);
-        }
-    }
-
-    private IEnumerator DotCoroutineForAttackControllers()
-    {
-        while (true)
-        {
-            foreach (var attackController in attacksDoingDamageOverTime)
-            {
-                if (attackController == null) { break; }
-                if (attackController.HasMadeFinalHit) { break; }
-
-                HashSet<BaseEntityController> targetsToDamage = attackController.TargetTrackingData.TargetsToDoDamageTo;
-                foreach (var target in targetsToDamage)
-                {
-                    float waitTime = attackController.AttacksEntry.AttacksStats.GetStatEntriesTotalValue(StatName.AttackCooldownTimer);
-                    yield return new WaitForSeconds(waitTime);
-
-                    iDefenseSequenceManager.AttemptToDamageTarget(attackController, target);
-                }
-            }
-        }
-    }
-
-    private IEnumerator DotCoroutineForStatusEffects()
-    {
-        while (true)
-        {
-            foreach (var targetEntity in statusEffectsDoingDamageOverTime)
-            {
-                if (targetEntity.Key == null) { break; }
-                if (targetEntity.Value == null) { break; }
-
-                foreach (var statusEffect in targetEntity.Value)
-                {
-                    if (statusEffect != null)
-                    {
-                        float waitTime = statusEffect.StatusEffectsStats.GetStatEntriesTotalValue(StatName.AttackCooldownTimer);
-                        yield return new WaitForSeconds(waitTime);
-
-                        iDefenseSequenceManager.AttemptToDamageTarget(statusEffect, targetEntity.Key);
-                    }
-                }
-            }
-        }
     }
 
     public void AttemptToCounterAttack(BaseEntityController callingEntitiesController)

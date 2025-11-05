@@ -1,5 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using SDSPEnums;
 using UnityEngine;
 
@@ -11,6 +13,12 @@ public class DefenseSequenceManager : MonoBehaviour, IDefenseSequenceManager
     private static float parriedOrReflectedIncomingDamageReduction = 0.65f;
     private static float parriedAttackReflectionAngle = 45.0f;
     private static float reflectedAttackReflectionAngle = 45.0f;
+
+    private Dictionary<BaseAttackController, Dictionary<BaseEntityController, float>> attacksDoingDamageOverTime = new();
+    private Dictionary<AreaOfEffectController, Dictionary<BaseEntityController, float>> areaOfEffectsDoingDamageOverTime = new();
+    private Dictionary<BaseEntityController, Dictionary<StatusEffectEntry, float>> statusEffectsDoingDamageOverTime = new();
+
+    private float damageOverTimeMSBudget = 4.0f;
 
     private IAttackSequenceManager iAttackSequenceManager;
     private IAreaOfEffectEntryManager iAreaOfEffectEntryManager;
@@ -111,11 +119,238 @@ public class DefenseSequenceManager : MonoBehaviour, IDefenseSequenceManager
         }
     }
 
-    public void AttemptToDamageTarget(BaseAttackController baseAttackController, BaseEntityController targetEntitiesController, BaseEntityController attackingEntitiesController = null)
+    public void ApplyDamageOverTime(BaseAttackController baseAttackController, BaseEntityController targetEntitiesController)
+    {
+        if (baseAttackController == null) { return; }
+        if (targetEntitiesController == null) { return; }
+
+        if (!attacksDoingDamageOverTime.ContainsKey(baseAttackController))
+        {
+            attacksDoingDamageOverTime.Add(baseAttackController, new());
+        }
+
+        if (!attacksDoingDamageOverTime[baseAttackController].ContainsKey(targetEntitiesController))
+        {
+            attacksDoingDamageOverTime[baseAttackController].Add(targetEntitiesController, new());
+        }
+
+        attacksDoingDamageOverTime[baseAttackController][targetEntitiesController] = Time.time;
+    }
+
+    public void ApplyDamageOverTime(AreaOfEffectController areaOfEffectController, BaseEntityController targetEntitiesController)
+    {
+        if (areaOfEffectController == null) { return; }
+        if (targetEntitiesController == null) { return; }
+
+        if (!areaOfEffectsDoingDamageOverTime.ContainsKey(areaOfEffectController))
+        {
+            areaOfEffectsDoingDamageOverTime.Add(areaOfEffectController, new());
+        }
+
+        if (!areaOfEffectsDoingDamageOverTime[areaOfEffectController].ContainsKey(targetEntitiesController))
+        {
+            areaOfEffectsDoingDamageOverTime[areaOfEffectController].Add(targetEntitiesController, new());
+        }
+
+        areaOfEffectsDoingDamageOverTime[areaOfEffectController][targetEntitiesController] = Time.time;
+    }
+
+    public void ApplyDamageOverTime(BaseEntityController targetEntitiesController,
+       StatusEffectEntryContainer statusEffectEntryContainerToApply, StatusEffectName statusEffectsName)
+    {
+        if (targetEntitiesController == null) { return; }
+        if (statusEffectEntryContainerToApply == null) { return; }
+        if (statusEffectsName == StatusEffectName.Default) { return; }
+        if (!statusEffectEntryContainerToApply.StatusEffectsDictionary.ContainsKey(statusEffectsName)) { return; }
+
+        if (!statusEffectsDoingDamageOverTime.ContainsKey(targetEntitiesController))
+        {
+            statusEffectsDoingDamageOverTime.Add(targetEntitiesController, new());
+        }
+
+        if (!statusEffectsDoingDamageOverTime[targetEntitiesController].ContainsKey(statusEffectEntryContainerToApply.StatusEffectsDictionary[statusEffectsName]))
+        {
+            statusEffectsDoingDamageOverTime[targetEntitiesController].Add(statusEffectEntryContainerToApply.StatusEffectsDictionary[statusEffectsName], new());
+        }
+
+        statusEffectsDoingDamageOverTime[targetEntitiesController][statusEffectEntryContainerToApply.StatusEffectsDictionary[statusEffectsName]] = Time.time;
+    }
+
+    public void RemoveDamageOverTime(BaseAttackController baseAttackController, BaseEntityController targetEntitiesController)
+    {
+        if (baseAttackController == null) { return; }
+        if (targetEntitiesController == null) { return; }
+
+        if (attacksDoingDamageOverTime.ContainsKey(baseAttackController))
+        {
+            if (attacksDoingDamageOverTime[baseAttackController].ContainsKey(targetEntitiesController))
+            {
+                attacksDoingDamageOverTime[baseAttackController].Remove(targetEntitiesController);
+            }
+        }
+    }
+
+    public void RemoveDamageOverTime(AreaOfEffectController areaOfEffectController, BaseEntityController targetEntitiesController)
+    {
+        if (areaOfEffectController == null) { return; }
+        if (targetEntitiesController == null) { return; }
+
+        if (areaOfEffectsDoingDamageOverTime.ContainsKey(areaOfEffectController))
+        {
+            if (areaOfEffectsDoingDamageOverTime[areaOfEffectController].ContainsKey(targetEntitiesController))
+            {
+                areaOfEffectsDoingDamageOverTime[areaOfEffectController].Remove(targetEntitiesController);
+            }
+        }
+    }
+
+    public void RemoveDamageOverTime(BaseEntityController targetEntitiesController,
+       StatusEffectEntryContainer statusEffectEntryContainerToApply, StatusEffectName statusEffectsName)
+    {
+        if (targetEntitiesController == null) { return; }
+        if (statusEffectEntryContainerToApply == null) { return; }
+        if (statusEffectsName == StatusEffectName.Default) { return; }
+        if (!statusEffectEntryContainerToApply.StatusEffectsDictionary.ContainsKey(statusEffectsName)) { return; }
+
+        if (statusEffectsDoingDamageOverTime.ContainsKey(targetEntitiesController))
+        {
+            if (statusEffectsDoingDamageOverTime[targetEntitiesController].ContainsKey(statusEffectEntryContainerToApply.StatusEffectsDictionary[statusEffectsName]))
+            {
+                statusEffectsDoingDamageOverTime[targetEntitiesController].Remove(statusEffectEntryContainerToApply.StatusEffectsDictionary[statusEffectsName]);
+            }
+        }
+    }
+
+    public void RemoveDamageOverTime(BaseEntityController targetEntitiesController)
+    {
+        if (targetEntitiesController == null) { return; }
+
+        if (statusEffectsDoingDamageOverTime.ContainsKey(targetEntitiesController))
+        {
+            statusEffectsDoingDamageOverTime.Remove(targetEntitiesController);
+        }
+    }
+
+    private IEnumerator ProjectileDamageOverTimeCoroutine()
+    {
+        var currentFrameStopwatch = new Stopwatch();
+
+        while (true)
+        {
+            if (GameStateManager.IsGamePaused)
+            {
+                yield return null;
+                continue;
+            }
+
+            currentFrameStopwatch.Restart();
+
+            foreach (var attackDictEntry in attacksDoingDamageOverTime.ToList())
+            {
+                if (attackDictEntry.Key == null || attackDictEntry.Key.HasMadeFinalHit)
+                {
+                    continue;
+                }
+
+                foreach (var target in attackDictEntry.Value)
+                {
+                    float waitTime = attackDictEntry.Key.AttacksEntry.AttacksStats.GetStatEntriesTotalValue(StatName.AttackCooldownTimer);
+
+                    if (Time.time - target.Value >= waitTime)
+                    {
+                        AttemptToDamageTarget(attackDictEntry.Key, target.Key);
+                        attacksDoingDamageOverTime[attackDictEntry.Key][target.Key] = Time.time;
+                    }
+                }
+            }
+
+            if (currentFrameStopwatch.Elapsed.TotalMilliseconds >= damageOverTimeMSBudget)
+            {
+                yield return null;
+                currentFrameStopwatch.Restart();
+            }
+        }
+    }
+
+
+    private IEnumerator AreaOfEffectDamageOverTimeCoroutine()
+    {
+        we need to fix this still
+        while (true)
+        {
+            if (GameStateManager.IsGamePaused)
+            {
+                yield return null;
+                continue;
+            }
+
+            int totalTrackedTargets = 0;
+            int projectileCount = attacksDoingDamageOverTime.Count;
+
+            foreach (var attackDictEntry in attacksDoingDamageOverTime)
+            {
+                if (attackDictEntry.Key == null || attackDictEntry.Key.HasMadeFinalHit)
+                    continue;
+
+                totalTrackedTargets = attackDictEntry.Value.Count;
+
+                foreach (var target in attackDictEntry.Value.ToList())
+                {
+                    float waitTime = attackDictEntry.Key.AttacksEntry.AttacksStats.GetStatEntriesTotalValue(StatName.AttackCooldownTimer);
+
+                    if (Time.time - target.Value >= waitTime)
+                    {
+                        AttemptToDamageTarget(attackDictEntry.Key, target.Key);
+                        attackDictEntry.Value[target.Key] = Time.time;
+                    }
+                }
+            }
+
+            float targetLoadRatio = Mathf.Clamp01(totalTrackedTargets / (float)ENTITYSOFTLIMIT);
+            float projectileLoadRatio = Mathf.Clamp01(projectileCount / (float)OBJECTSOFTLIMIT);
+            float loadRatio = Mathf.Clamp01((targetLoadRatio * 0.4f) + (projectileLoadRatio * 0.6f));
+
+            float tickRate = Mathf.Lerp(MINTICKRATE, MAXTICKRATE, loadRatio);
+            yield return new WaitForSeconds(tickRate);
+        }
+    }
+
+
+
+
+
+
+
+
+
+    private IEnumerator DotCoroutineForStatusEffects()
+    {
+        while (true)
+        {
+            foreach (var targetEntity in statusEffectsDoingDamageOverTime)
+            {
+                if (targetEntity.Key == null) { break; }
+                if (targetEntity.Value == null) { break; }
+
+                foreach (var statusEffect in targetEntity.Value)
+                {
+                    if (statusEffect != null)
+                    {
+                        float waitTime = statusEffect.StatusEffectsStats.GetStatEntriesTotalValue(StatName.AttackCooldownTimer);
+                        yield return new WaitForSeconds(waitTime);
+
+                        iDefenseSequenceManager.AttemptToDamageTarget(statusEffect, targetEntity.Key);
+                    }
+                }
+            }
+        }
+    }
+
+    public void AttemptToDamageTarget(BaseAttackController baseAttackController, BaseEntityController targetEntitiesController)
     {
         CalculateAttackSequencePrechecks(baseAttackController, targetEntitiesController, out float targetsCritHitResist, out float targetsCritDamResist);
         CalculateAttackSequence(baseAttackController, targetsCritHitResist, targetsCritDamResist, out float attacksDamageAmount, out bool wasTheAttackACrit);
-        AttemptToDefendDamage(baseAttackController, targetEntitiesController, attacksDamageAmount, wasTheAttackACrit, attackingEntitiesController);
+        AttemptToDefendDamage(baseAttackController, targetEntitiesController, attacksDamageAmount, wasTheAttackACrit);
     }
 
     private void CalculateAttackSequencePrechecks(BaseAttackController baseAttackController, BaseEntityController targetEntitiesController,
