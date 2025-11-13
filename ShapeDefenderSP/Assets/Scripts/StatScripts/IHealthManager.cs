@@ -1,16 +1,11 @@
 using System.Collections;
 using SDSPEnums;
+using UnityEngine;
 
 public interface IHealthManager
 {
-    void ApplyDamageToTarget(BaseAttackController callingAttackController, float incomingDamageAmount, bool isDamageCritical,
+    void ApplyDamageToTarget(MonoBehaviour callingAttacksMonoBehaviour, float incomingDamageAmount, bool isDamageCritical,
         BaseEntityController targetEntitiesController, float targetEntitiesModifiedArmorValue);
-
-    void ApplyDamageToTarget(AreaOfEffectController callingAreaOfEffectController, float incomingDamageAmount, bool isDamageCritical,
-    BaseEntityController targetEntitiesController, float targetEntitiesModifiedArmorValue);
-
-    void ApplyDamageToTarget(StatusEffectEntry callingStatusEffect, float incomingDamageAmount, bool isDamageCritical,
-    BaseEntityController targetEntitiesController, float targetEntitiesModifiedArmorValue);
 
     void AddToEntitiesLife(BaseEntityController targetEntityController, float healingAmount, bool isHealingCritical, HealingType healingType);
 

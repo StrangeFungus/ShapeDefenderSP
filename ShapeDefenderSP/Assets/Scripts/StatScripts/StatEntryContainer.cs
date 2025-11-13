@@ -74,7 +74,7 @@ public class StatEntryContainer
         }
     }
 
-    public StatEntryContainer CopyStatEntryDict(StatEntryContainer statEntryContainer)
+    public static StatEntryContainer CopyStatEntryDict(StatEntryContainer statEntryContainer)
     {
         StatEntryContainer copiedStatEntryContainer = new();
 

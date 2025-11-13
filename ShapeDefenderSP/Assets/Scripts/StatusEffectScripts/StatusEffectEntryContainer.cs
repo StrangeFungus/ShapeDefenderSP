@@ -18,7 +18,7 @@ public class StatusEffectEntryContainer : MonoBehaviour
         }
     }
 
-    public void CopyStatusEffectEntryContainer(StatusEffectEntryContainer statusEffectEntryContainerToCopyFrom)
+    public static StatusEffectEntryContainer CopyStatusEffectEntryContainer(StatusEffectEntryContainer statusEffectEntryContainerToCopyFrom)
     {
         if (statusEffectEntryContainerToCopyFrom != null)
         {

@@ -138,8 +138,8 @@ public class AttackEntry
         };
 
         // COMPLEX ATTACK DATA PT2
-        copy.attacksStats.CopyStatEntryDict(attackEntryToCopyFrom.AttacksStats);
-        copy.attacksStatusEffects.CopyStatusEffectEntryContainer(attackEntryToCopyFrom.attacksStatusEffects);
+        copy.attacksStats = StatEntryContainer.CopyStatEntryDict(attackEntryToCopyFrom.AttacksStats);
+        copy.attacksStatusEffects = StatusEffectEntryContainer.CopyStatusEffectEntryContainer(attackEntryToCopyFrom.attacksStatusEffects);
 
         if (attackEntryToCopyFrom.areaOfEffectPrefabController != null)
         {

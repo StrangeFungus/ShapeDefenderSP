@@ -20,7 +20,8 @@ public class AreaOfEffectEntry
     [SerializeField] private bool hasColliderBeenValidated;
     public bool HasColliderBeenValidated => hasColliderBeenValidated;
 
-    [SerializeField] private float radiusSize = 10.0f;
+    [SerializeField] private float defaultRadiusSize = 10.0f;
+    private float radiusSize = 10.0f;
     public float RadiusSize { get => radiusSize; set => radiusSize = value; }
 
     // AREA OF EFFECT SETTINGS
@@ -78,6 +79,12 @@ public class AreaOfEffectEntry
     [SerializeField] private bool canAreaOfEffectBeDodged;
     public bool CanAreaOfEffectBeDodged => canAreaOfEffectBeDodged;
 
+    [SerializeField] private bool canEffectBeReflected;
+    public bool CanEffectBeReflected => canEffectBeReflected;
+
+    [SerializeField] private int maxAllowedReflections;
+    public int MaxAllowedReflections => maxAllowedReflections;
+
     [SerializeField] private bool blocksEnemiesAbilityToMove;
     public bool BlocksEnemiesAbilityToMove => blocksEnemiesAbilityToMove;
 
@@ -97,14 +104,25 @@ public class AreaOfEffectEntry
     // TRACKING DATA
     private BaseEntityController attackingEntitiesController;
     public BaseEntityController AttackingEntitiesController { get => attackingEntitiesController; set => attackingEntitiesController = value; }
+    private string parentsTagType = "";
+    public string ParentsTagType { get => parentsTagType; set => parentsTagType = value; }
+
+    public void OnAwake()
+    {
+        radiusSize = defaultRadiusSize;
+    }
 
     public void CopyAreaOfEffectEntry(AreaOfEffectEntry areaOfEffectEntryToCopy)
     {
-        areaOfEffectsStatusEffects = areaOfEffectEntryToCopy.areaOfEffectsStatusEffects
+        areaOfEffectsStats = StatEntryContainer.CopyStatEntryDict(areaOfEffectEntryToCopy.areaOfEffectsStats);
+        areaOfEffectsStatusEffects = StatusEffectEntryContainer.CopyStatusEffectEntryContainer(areaOfEffectEntryToCopy.areaOfEffectsStatusEffects);
+        attackingEntitiesController = areaOfEffectEntryToCopy.attackingEntitiesController;
     }
 
     public void ResetAreaOfEffectEntry()
     {
-
+        radiusSize = defaultRadiusSize;
+        areaOfEffectsStats.ResetStatEntryDict();
+        areaOfEffectsStatusEffects.ResetStatusEffectEntryDict();
     }
 }

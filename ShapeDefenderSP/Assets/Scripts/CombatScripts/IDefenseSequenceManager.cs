@@ -1,4 +1,5 @@
 using SDSPEnums;
+using UnityEngine;
 
 public interface IDefenseSequenceManager
 {
@@ -13,7 +14,7 @@ public interface IDefenseSequenceManager
        StatusEffectEntryContainer statusEffectEntryContainerToApply, StatusEffectName statusEffectsName);
     void RemoveDamageOverTime(BaseEntityController targetEntitiesController);
     void AttemptToDamageTarget(BaseAttackController baseAttackController, BaseEntityController targetEntitiesController);
-    void AttemptToDefendDamage(BaseAttackController baseAttackController, BaseEntityController targetEntitiesController,
-        float attackDamage, bool isDamageCritical);
-    float CalculateBaseDamage(StatEntryContainer statEntryContainer);
+    void AttemptToDamageTarget(AreaOfEffectController areaOfEffectController, BaseEntityController targetEntitiesController);
+    void AttemptToDamageTarget(StatusEffectEntry statusEffectEntry, BaseEntityController targetEntitiesController);
+    void AttemptToDefendDamage(MonoBehaviour attackingMonobehaviour, BaseEntityController targetEntitiesController, float attackDamage, bool isDamageCritical);
 }

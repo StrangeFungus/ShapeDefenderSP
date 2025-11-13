@@ -244,6 +244,8 @@ namespace SDSPEnums
     {
         None,
 
+        AreaOfEffect,
+
         //MEDIEVAL MELEE PASSIVE
         //MEDIEVAL  -- >> MODERN >> SPACE >> ADVANCED SPACE
         StationaryWallBlades,
@@ -387,12 +389,6 @@ namespace SDSPEnums
         Twist,
     }
 
-    public enum DamageOverTimeUpdateType
-    {
-        AddNew,
-        RemoveOld,
-        SetNewTime
-    }
     public enum StatusEffectName
     {
         Default,
