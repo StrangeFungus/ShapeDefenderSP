@@ -137,22 +137,24 @@ public class DefenseSequenceManager : MonoBehaviour, IDefenseSequenceManager
         attacksDoingDamageOverTime[baseAttackController][targetEntitiesController] = Time.time;
     }
 
-    public void ApplyDamageOverTime(AreaOfEffectController areaOfEffectController, BaseEntityController targetEntitiesController)
+    public void ApplyDamageOverTime(AreaOfEffectController areaOfEffectController, BaseEntityController targetEntitiesController = null)
     {
         if (areaOfEffectController == null) { return; }
-        if (targetEntitiesController == null) { return; }
 
         if (!areaOfEffectsDoingDamageOverTime.ContainsKey(areaOfEffectController))
         {
             areaOfEffectsDoingDamageOverTime.Add(areaOfEffectController, new());
         }
 
-        if (!areaOfEffectsDoingDamageOverTime[areaOfEffectController].ContainsKey(targetEntitiesController))
+        if (targetEntitiesController != null)
         {
-            areaOfEffectsDoingDamageOverTime[areaOfEffectController].Add(targetEntitiesController, new());
-        }
+            if (!areaOfEffectsDoingDamageOverTime[areaOfEffectController].ContainsKey(targetEntitiesController))
+            {
+                areaOfEffectsDoingDamageOverTime[areaOfEffectController].Add(targetEntitiesController, new());
+            }
 
-        areaOfEffectsDoingDamageOverTime[areaOfEffectController][targetEntitiesController] = Time.time;
+            areaOfEffectsDoingDamageOverTime[areaOfEffectController][targetEntitiesController] = Time.time;
+        }
     }
 
     public void ApplyDamageOverTime(BaseEntityController targetEntitiesController,
@@ -260,7 +262,7 @@ public class DefenseSequenceManager : MonoBehaviour, IDefenseSequenceManager
                         continue;
                     }
 
-                    float waitTime = attackDictEntry.Key.AttacksEntry.AttacksStats.GetStatEntriesTotalValue(StatName.DamageOverTimeHitRateTimer);
+                    float waitTime = attackDictEntry.Key.AttacksEntry.EffectsStats.GetStatEntriesTotalValue(StatName.DamageOverTimeHitRateTimer);
 
                     if (Time.time - target.Value >= waitTime)
                     {
@@ -300,7 +302,7 @@ public class DefenseSequenceManager : MonoBehaviour, IDefenseSequenceManager
 
             foreach (var areaOfEffect in areaOfEffectsDoingDamageOverTime.ToList())
             {
-                if (areaOfEffect.Key == null || areaOfEffect.Key.FinishLifecycle)
+                if (areaOfEffect.Key == null || areaOfEffect.Key.HasMadeFinalHit)
                 {
                     continue;
                 }
@@ -312,7 +314,7 @@ public class DefenseSequenceManager : MonoBehaviour, IDefenseSequenceManager
                         continue;
                     }
 
-                    float waitTime = areaOfEffect.Key.AreaOfEffectsEntry.AreaOfEffectsStats.GetStatEntriesTotalValue(StatName.DamageOverTimeHitRateTimer);
+                    float waitTime = areaOfEffect.Key.AttacksEntry.EffectsStats.GetStatEntriesTotalValue(StatName.DamageOverTimeHitRateTimer);
 
                     if (Time.time - target.Value >= waitTime)
                     {
@@ -363,7 +365,7 @@ public class DefenseSequenceManager : MonoBehaviour, IDefenseSequenceManager
                         continue;
                     }
 
-                    float waitTime = statusEffect.Key.StatusEffectsStats.GetStatEntriesTotalValue(StatName.DamageOverTimeHitRateTimer);
+                    float waitTime = statusEffect.Key.EffectsStats.GetStatEntriesTotalValue(StatName.DamageOverTimeHitRateTimer);
 
                     if (Time.time - statusEffect.Value >= waitTime)
                     {
@@ -388,21 +390,21 @@ public class DefenseSequenceManager : MonoBehaviour, IDefenseSequenceManager
     public void AttemptToDamageTarget(BaseAttackController baseAttackController, BaseEntityController targetEntitiesController)
     {
         CalculateAttackSequencePrechecks(targetEntitiesController, out float targetsCritHitResist, out float targetsCritDamResist);
-        CalculateAttackSequence(baseAttackController.AttacksEntry.AttacksStats, targetsCritHitResist, targetsCritDamResist, out float attacksDamageAmount, out bool wasTheAttackACrit);
+        CalculateAttackSequence(baseAttackController.AttacksEntry.EffectsStats, targetsCritHitResist, targetsCritDamResist, out float attacksDamageAmount, out bool wasTheAttackACrit);
         AttemptToDefendDamage(baseAttackController, targetEntitiesController, attacksDamageAmount, wasTheAttackACrit);
     }
 
     public void AttemptToDamageTarget(AreaOfEffectController areaOfEffectController, BaseEntityController targetEntitiesController)
     {
         CalculateAttackSequencePrechecks(targetEntitiesController, out float targetsCritHitResist, out float targetsCritDamResist);
-        CalculateAttackSequence(areaOfEffectController.AreaOfEffectsEntry.AreaOfEffectsStats, targetsCritHitResist, targetsCritDamResist, out float attacksDamageAmount, out bool wasTheAttackACrit);
+        CalculateAttackSequence(areaOfEffectController.AttacksEntry.EffectsStats, targetsCritHitResist, targetsCritDamResist, out float attacksDamageAmount, out bool wasTheAttackACrit);
         AttemptToDefendDamage(areaOfEffectController, targetEntitiesController, attacksDamageAmount, wasTheAttackACrit);
     }
 
     public void AttemptToDamageTarget(StatusEffectEntry statusEffectEntry, BaseEntityController targetEntitiesController)
     {
         CalculateAttackSequencePrechecks(targetEntitiesController, out float targetsCritHitResist, out float targetsCritDamResist);
-        CalculateAttackSequence(statusEffectEntry.StatusEffectsStats, targetsCritHitResist, targetsCritDamResist, out float attacksDamageAmount, out bool wasTheAttackACrit);
+        CalculateAttackSequence(statusEffectEntry.EffectsStats, targetsCritHitResist, targetsCritDamResist, out float attacksDamageAmount, out bool wasTheAttackACrit);
         AttemptToDefendDamage(statusEffectEntry, targetEntitiesController, attacksDamageAmount, wasTheAttackACrit);
     }
 
@@ -493,17 +495,17 @@ public class DefenseSequenceManager : MonoBehaviour, IDefenseSequenceManager
         {
             damageTypes = baseAttackController.AttacksEntry.DamageTypes;
             isAttackBlockable = baseAttackController.AttacksEntry.IsProjectileBlockable;
-            isAttackAPhysicalObject = baseAttackController.AttacksEntry.IsProjectilePhysicalObject;
-            attacksStatusEffectContainer = baseAttackController.AttacksEntry.AttacksStatusEffects;
-            attacksStatEntryContainer = baseAttackController.AttacksEntry.AttacksStats;
+            isAttackAPhysicalObject = baseAttackController.AttacksEntry.IsEffectAPhysicalObject;
+            attacksStatusEffectContainer = baseAttackController.AttacksEntry.EffectsStatusEffects;
+            attacksStatEntryContainer = baseAttackController.AttacksEntry.EffectsStats;
         }
         else if (attackingMonobehaviour is AreaOfEffectController areaOfEffectController)
         {
-            damageTypes = areaOfEffectController.AreaOfEffectsEntry.DamageTypes;
-            isAttackBlockable = areaOfEffectController.AreaOfEffectsEntry.IsAreaOfEffectBlockable;
-            isAttackAPhysicalObject = areaOfEffectController.AreaOfEffectsEntry.IsAreaOfEffectPhysicalObject;
-            attacksStatusEffectContainer = areaOfEffectController.AreaOfEffectsEntry.AreaOfEffectsStatusEffects;
-            attacksStatEntryContainer = areaOfEffectController.AreaOfEffectsEntry.AreaOfEffectsStats;
+            damageTypes = areaOfEffectController.AttacksEntry.DamageTypes;
+            isAttackBlockable = areaOfEffectController.AttacksEntry.IsProjectileBlockable;
+            isAttackAPhysicalObject = areaOfEffectController.AttacksEntry.IsEffectAPhysicalObject;
+            attacksStatusEffectContainer = areaOfEffectController.AttacksEntry.EffectsStatusEffects;
+            attacksStatEntryContainer = areaOfEffectController.AttacksEntry.EffectsStats;
         }
         else if (attackingMonobehaviour is StatusEffectEntry statusEffectEntry)
         {
@@ -692,8 +694,11 @@ public class DefenseSequenceManager : MonoBehaviour, IDefenseSequenceManager
 
             if (attacksMonobehaviour is BaseAttackController baseAttackController)
             {
-                doesAttackGenerateAOEOnHit = baseAttackController.AttacksEntry.DoesAnAreaOfEffect;
-                areaOfEffectControllerToSpawn = baseAttackController.AttacksEntry.AreaOfEffectPrefabController;
+                if (baseAttackController.AttacksEntry.DoesAnAreaOfEffect)
+                {
+                    doesAttackGenerateAOEOnHit = baseAttackController.AttacksEntry.AreaOfEffectPrefabController.AreaOfEffectsEntry.SpawnsWhenAttackHits;
+                    areaOfEffectControllerToSpawn = baseAttackController.AttacksEntry.AreaOfEffectPrefabController;
+                }
             }
             else if (attacksMonobehaviour is AreaOfEffectController areaOfEffectController)
             {

@@ -16,9 +16,6 @@ public class AttackEntryManager : MonoBehaviour, IAttackEntryManager
 
     private static Dictionary<AttackName, BaseAttackController> defaultAttackControllers = new();
 
-    // LEVEL UP SETTINGS
-    //public static float LevelUpStatMultiplier { get; private set; } = 0.10f; // Default is 10% per level.
-
     // OBJECT POOL FOR ATTACKS
     [SerializeField] private GameObject attackObjectPoolParent;
     private static Dictionary<AttackName, List<BaseAttackController>> attackPrefabObjectPool = new();
@@ -119,7 +116,7 @@ public class AttackEntryManager : MonoBehaviour, IAttackEntryManager
                         GameObject newAttackObject = Instantiate(defaultBaseAttackController.gameObject);
                         if (newAttackObject.TryGetComponent<BaseAttackController>(out var attackController))
                         {
-                            attackController.CopyControllerData(defaultBaseAttackController);
+                            attackController.CopyAttacksControllerData(defaultBaseAttackController);
                             entitiesAttackContainer.AddAttack(attackController);
 
                             if (!attackPrefabObjectPool.ContainsKey(attacksName))
@@ -177,40 +174,6 @@ public class AttackEntryManager : MonoBehaviour, IAttackEntryManager
         }
     }
 
-    public void LevelUpAttack(AttackName attacksName, AttackEntryContainer entitiesAttackContainer, int numberOfLevelUps)
-    {
-        if (entitiesAttackContainer != null)
-        {
-            if (entitiesAttackContainer.AttackControllerDictionary.ContainsKey(attacksName))
-            {
-                if (entitiesAttackContainer.AttackControllerDictionary[attacksName] != null)
-                {
-                    entitiesAttackContainer.AttackControllerDictionary[attacksName].AttacksEntry.AttacksLevel++;
-
-                    if (defaultAttackControllers.TryGetValue(attacksName, out var attackToLevelsController))
-                    {
-                        Dictionary<StatName, int> newLevelUps = new();
-
-                        foreach (var stat in attackToLevelsController.AttacksEntry.AttacksStats.StatEntryDictionary)
-                        {
-                            newLevelUps.Add(stat.Key, numberOfLevelUps);
-                        }
-
-                        var iStatEntryManager = InterfaceContainer.Request<IStatEntryManager>();
-                        if (iStatEntryManager != null)
-                        {
-                            iStatEntryManager.LevelUpStat(newLevelUps, attackToLevelsController);
-                        }
-                        else
-                        {
-                            Debug.LogWarning("No attack system found in InterfaceContainer.");
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     public void ChangeAttackUsability(AttackName attacksName, AttackEntryContainer entitiesAttackContainer, bool canAttackBeUsed)
     {
         if (entitiesAttackContainer != null)
@@ -237,66 +200,6 @@ public class AttackEntryManager : MonoBehaviour, IAttackEntryManager
                     }
                 }
             }
-        }
-    }
-
-    public void AddToEntitiesPendingAttackUpdates(AttackName attacksName, AttackModificationAction attacksModificationAction, BaseEntityController entityCallingRequest)
-    {
-        if (attacksName != AttackName.None && entityCallingRequest != null)
-        {
-            if (!entityCallingRequest.EntitiesAttackContainer.PendingAttackUpdates.ContainsKey(attacksName))
-            {
-                entityCallingRequest.EntitiesAttackContainer.PendingAttackUpdates.Add(attacksName, new());
-            }
-
-            entityCallingRequest.EntitiesAttackContainer.PendingAttackUpdates[attacksName].Add(attacksModificationAction);
-        }
-    }
-
-    public void ProcessPendingAttackUpdates(BaseEntityController callingEntitiesController)
-    {
-        Debug.Log($"Updating attacks before attempting to use the attack, updates to do; {callingEntitiesController.EntitiesAttackContainer.PendingAttackUpdates.Count}");
-
-        foreach (var attackNameInList in callingEntitiesController.EntitiesAttackContainer.PendingAttackUpdates)
-        {
-            foreach (var attackUpdate in attackNameInList.Value)
-            {
-                int numberOfLevelUpsToApply = 0;
-
-                switch (attackUpdate)
-                {
-                    case AttackModificationAction.AddNewAttack:
-                        AddNewAttack(attackNameInList.Key, callingEntitiesController.EntitiesAttackContainer, callingEntitiesController.transform);
-                        break;
-                    case AttackModificationAction.RemoveAttack:
-                        RemoveAttack(attackNameInList.Key, callingEntitiesController.EntitiesAttackContainer);
-                        break;
-                    case AttackModificationAction.SetToTrue:
-                        ChangeAttackUsability(attackNameInList.Key, callingEntitiesController.EntitiesAttackContainer, true);
-                        break;
-                    case AttackModificationAction.SetToFalse:
-                        ChangeAttackUsability(attackNameInList.Key, callingEntitiesController.EntitiesAttackContainer, false);
-                        break;
-                    case AttackModificationAction.LevelUp:
-                        numberOfLevelUpsToApply++;
-                        break;
-                    default:
-                        Debug.LogWarning($"Unknown UnlockedAttackPendingActions: {attackNameInList.Value}");
-                        break;
-                }
-
-                if (attackUpdate == AttackModificationAction.LevelUp && numberOfLevelUpsToApply > 0)
-                {
-                    LevelUpAttack(attackNameInList.Key, callingEntitiesController.EntitiesAttackContainer, numberOfLevelUpsToApply);
-                }
-            }
-        }
-
-        callingEntitiesController.EntitiesAttackContainer.PendingAttackUpdates.Clear();
-
-        if (callingEntitiesController.EntitiesAttackContainer.PendingAttackUpdates.Count == 0)
-        {
-            Debug.Log($"Pending Attack Updates was successful!");
         }
     }
 }

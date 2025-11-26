@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using SDSPEnums;
 using UnityEngine;
@@ -6,22 +7,19 @@ using UnityEngine.InputSystem.XR;
 [System.Serializable]
 public class AttackEntryContainer
 {
-    IAttackEntryManager iAttackEntryManager;
     [SerializeField] private List<AttackName> defaultAttacks;
-    
-    private Dictionary<AttackName, List<AttackModificationAction>> pendingAttackUpdates = new();
-    public Dictionary<AttackName, List<AttackModificationAction>> PendingAttackUpdates { get => pendingAttackUpdates; set => pendingAttackUpdates = value; }
 
     private Dictionary<AttackName, BaseAttackController> attackControllerDictionary = new();
     public IReadOnlyDictionary<AttackName, BaseAttackController> AttackControllerDictionary => attackControllerDictionary;
 
-    public void IManagerInitilizer(IAttackEntryManager attackEntryManager)
-    {
-        iAttackEntryManager = attackEntryManager;
-    }
+    private IAttackEntryManager iAttackEntryManager;
+    private IStatEntryManager iStatEntryManager;
 
     public void InitializeAttackEntryDict()
     {
+        iAttackEntryManager ??= InterfaceContainer.Request<IAttackEntryManager>();
+        iStatEntryManager ??= InterfaceContainer.Request<IStatEntryManager>();
+
         if (defaultAttacks != null)
         {
             if (defaultAttacks.Count > 0)

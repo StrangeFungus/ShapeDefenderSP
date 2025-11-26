@@ -80,8 +80,10 @@ public class StatusEffectEntryManager : MonoBehaviour, IStatusEffectEntryManager
     };
 
     // MANAGERS
+    private IStatEntryManager iStatEntryManager;
     private IDefenseSequenceManager iDefenseSequenceManager;
     private IHealthManager iHealthManager;
+
 
     private void Awake()
     {
@@ -101,6 +103,7 @@ public class StatusEffectEntryManager : MonoBehaviour, IStatusEffectEntryManager
 
     private void Start()
     {
+        iStatEntryManager ??= InterfaceContainer.Request<IStatEntryManager>();
         iDefenseSequenceManager ??= InterfaceContainer.Request<IDefenseSequenceManager>();
         iHealthManager ??= InterfaceContainer.Request<IHealthManager>();
     }
@@ -216,38 +219,45 @@ public class StatusEffectEntryManager : MonoBehaviour, IStatusEffectEntryManager
             }
         }
 
-        if (!targetEntitiesController.EntitiesRunningStatusEffectsCoroutines.ContainsKey(statusEffectsName))
+        if (statusEffectEntryContainerToApply.StatusEffectsDictionary.ContainsKey(statusEffectsName))
         {
-            targetEntitiesController.EntitiesRunningStatusEffectsCoroutines.Add(statusEffectsName, false);
+            if (!targetEntitiesController.EntitiesActiveStatusEffects.ContainsKey(statusEffectsName))
+            {
+                targetEntitiesController.EntitiesActiveStatusEffects.Add(statusEffectsName, new());
+            }
+
+            targetEntitiesController.EntitiesActiveStatusEffects[statusEffectsName].Add(statusEffectEntryContainerToApply.StatusEffectsDictionary[statusEffectsName]);
         }
 
-        if (!targetEntitiesController.EntitiesRunningStatusEffectsCoroutines[statusEffectsName])
+        if (debuffsThatApplyDamageOverTime.Contains(statusEffectsName))
         {
-            if (debuffsThatApplyDamageOverTime.Contains(statusEffectsName))
+            iDefenseSequenceManager.ApplyDamageOverTime(targetEntitiesController, statusEffectEntryContainerToApply, statusEffectsName);
+        }
+        else if (debuffsThatReduceTargetsStats.Contains(statusEffectsName))
+        {
+            foreach (var effect in statusEffectEntryContainerToApply.StatusEffectsDictionary)
             {
-                targetEntitiesController.EntitiesRunningStatusEffectsCoroutines[statusEffectsName] = true;
-                StartCoroutine(DealEffectDamageOverTimeToTargetCoroutine(targetEntitiesController, statusEffectEntryContainerToApply, statusEffectsName, attackingEntitiesController));
-            }
-            else if (debuffsThatReduceTargetsStats.Contains(statusEffectsName))
-            {
-                targetEntitiesController.EntitiesRunningStatusEffectsCoroutines[statusEffectsName] = true;
-                StartCoroutine(StatReductionsCoroutine(targetEntitiesController, statusEffectEntryContainerToApply, statusEffectsName, attackingEntitiesController));
-            }
-            else if (debuffsThatRestrictTargetsActions.Contains(statusEffectsName))
-            {
-                targetEntitiesController.EntitiesRunningStatusEffectsCoroutines[statusEffectsName] = true;
-                StartCoroutine(ActionLockedEffectsCoroutine(targetEntitiesController, statusEffectEntryContainerToApply, statusEffectsName, attackingEntitiesController));
-
-                if (statusEffectsName == StatusEffectName.ParalyzationStack)
+                foreach (var stat in effect.Value.EffectsStats.StatEntryDictionary)
                 {
-                    StartCoroutine(MovementParalyzationCheckCoroutine(targetEntitiesController));
+                    StatEntryModifier currentStatEntryModifier = new StatEntryModifier(stat.Value.);
                 }
             }
-            else if (statusEffectsName == StatusEffectName.KnockbackEffect)
+            iStatEntryManager.ApplyEnemyStatReductions(targetEntitiesController, statusEffectsName, 1, );
+            StartCoroutine(StatReductionsCoroutine(targetEntitiesController, statusEffectEntryContainerToApply, statusEffectsName, attackingEntitiesController));
+        }
+        else if (debuffsThatRestrictTargetsActions.Contains(statusEffectsName))
+        {
+            StartCoroutine(ActionLockedEffectsCoroutine(targetEntitiesController, statusEffectEntryContainerToApply, statusEffectsName, attackingEntitiesController));
+
+            if (statusEffectsName == StatusEffectName.ParalyzationStack)
             {
-                targetEntitiesController.EntitiesRunningStatusEffectsCoroutines[statusEffectsName] = true;
-                StartCoroutine(PushPullEffectCoroutine(targetEntitiesController, statusEffectEntryContainerToApply, statusEffectsName, attackingEntitiesController));
+                StartCoroutine(MovementParalyzationCheckCoroutine(targetEntitiesController));
             }
+        }
+        else if (statusEffectsName == StatusEffectName.KnockbackEffect)
+        {
+            targetEntitiesController.EntitiesRunningStatusEffectsCoroutines[statusEffectsName] = true;
+            StartCoroutine(PushPullEffectCoroutine(targetEntitiesController, statusEffectEntryContainerToApply, statusEffectsName, attackingEntitiesController));
         }
     }
 
@@ -352,6 +362,11 @@ public class StatusEffectEntryManager : MonoBehaviour, IStatusEffectEntryManager
         }
     }
 
+
+
+
+
+    //iStatusEffectEntryManager.EntityParalyzationCheck(callingEntitiesController)
     public void EntitiesActionParalyzationCheck(BaseEntityController targetEntitiesController)
     {
         if (targetEntitiesController != null)

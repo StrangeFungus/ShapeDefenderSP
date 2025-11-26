@@ -8,6 +8,13 @@ public class GlobalManager : MonoBehaviour
     // Stat manager needs its InitializeDefaults function called
 
 
+
+
+
+
+
+
+
     private void Awake()
     {
         if (Instance == null)

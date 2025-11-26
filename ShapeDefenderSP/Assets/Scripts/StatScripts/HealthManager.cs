@@ -20,32 +20,34 @@ public class HealthManager : MonoBehaviour, IHealthManager
         InterfaceContainer.Register<IHealthManager>(this);
     }
 
-    public void ApplyDamageToTarget(MonoBehaviour callingAttacksMonoBehaviour, float incomingDamageAmount, bool isDamageCritical,
+    public void ApplyDamageToTarget(BaseAttackController baseAttackController, float incomingDamageAmount, bool isDamageCritical,
         BaseEntityController targetEntitiesController, float targetEntitiesModifiedArmorValue)
     {
-        if (callingAttacksMonoBehaviour == null) { Debug.Log($"The attacks controller was null, returning..."); return; }
+        if (baseAttackController == null) { Debug.Log($"The attacks controller was null, returning..."); return; }
         if (targetEntitiesController == null) { Debug.Log($"The targets controller was null, returning..."); return; }
 
-        if (callingAttacksMonoBehaviour is BaseAttackController baseAttackController)
-        {
-            FinalizeApplyDamageToTarget(baseAttackController.AttacksEntry.DoesDamageIgnoresEnergyShields, baseAttackController.AttacksEntry.DamageTypes, baseAttackController.AttacksEntry.IsProjectilePhysicalObject,
-                incomingDamageAmount, isDamageCritical, targetEntitiesController, targetEntitiesModifiedArmorValue, baseAttackController.AttacksEntry.AttackingEntitiesController);
-        }
-        else if (callingAttacksMonoBehaviour is AreaOfEffectController areaOfEffectController)
-        {
-            FinalizeApplyDamageToTarget(areaOfEffectController.AreaOfEffectsEntry.DoesDamageIgnoresEnergyShields, areaOfEffectController.AreaOfEffectsEntry.DamageTypes,
-                areaOfEffectController.AreaOfEffectsEntry.IsAreaOfEffectPhysicalObject, incomingDamageAmount, isDamageCritical, targetEntitiesController, targetEntitiesModifiedArmorValue, areaOfEffectController.AreaOfEffectsEntry.AttackingEntitiesController);
-        }
-        else if (callingAttacksMonoBehaviour is StatusEffectEntry statusEffectEntry)
-        {
-            FinalizeApplyDamageToTarget(statusEffectEntry.DoesDamageIgnoresEnergyShields, statusEffectEntry.DamageTypes, statusEffectEntry.IsPhysicalObject,
-                incomingDamageAmount, isDamageCritical, targetEntitiesController, targetEntitiesModifiedArmorValue, statusEffectEntry.AttackingEntitiesController);
-        }
-        else
-        {
-            Debug.Log($"Calling attacks MonoBehaviour was invalid, returning...");
-            return;
-        }
+        FinalizeApplyDamageToTarget(baseAttackController.AttacksEntry.DoesDamageIgnoresEnergyShields, baseAttackController.AttacksEntry.DamageTypes, baseAttackController.AttacksEntry.IsEffectAPhysicalObject,
+            incomingDamageAmount, isDamageCritical, targetEntitiesController, targetEntitiesModifiedArmorValue, baseAttackController.AttacksEntry.AttackingEntitiesController);
+    }
+
+    public void ApplyDamageToTarget(AreaOfEffectController areaOfEffectController, float incomingDamageAmount, bool isDamageCritical,
+    BaseEntityController targetEntitiesController, float targetEntitiesModifiedArmorValue)
+    {
+        if (areaOfEffectController == null) { Debug.Log($"The area of effects controller was null, returning..."); return; }
+        if (targetEntitiesController == null) { Debug.Log($"The targets controller was null, returning..."); return; }
+
+        FinalizeApplyDamageToTarget(areaOfEffectController.AttacksEntry.DoesDamageIgnoresEnergyShields, areaOfEffectController.AttacksEntry.DamageTypes,
+                        areaOfEffectController.AttacksEntry.IsEffectAPhysicalObject, incomingDamageAmount, isDamageCritical, targetEntitiesController, targetEntitiesModifiedArmorValue, areaOfEffectController.AttacksEntry.AttackingEntitiesController);
+    }
+
+    public void ApplyDamageToTarget(StatusEffectEntry statusEffectEntry, float incomingDamageAmount, bool isDamageCritical,
+    BaseEntityController targetEntitiesController, float targetEntitiesModifiedArmorValue)
+    {
+        if (statusEffectEntry == null) { Debug.Log($"The status effect entry was null, returning..."); return; }
+        if (targetEntitiesController == null) { Debug.Log($"The targets controller was null, returning..."); return; }
+
+        FinalizeApplyDamageToTarget(statusEffectEntry.DoesDamageIgnoresEnergyShields, statusEffectEntry.DamageTypes, statusEffectEntry.IsEffectAPhysicalObject,
+            incomingDamageAmount, isDamageCritical, targetEntitiesController, targetEntitiesModifiedArmorValue, statusEffectEntry.AttackingEntitiesController);
     }
 
     private void FinalizeApplyDamageToTarget(bool doesDamageIgnoreEnergyShields, DamageType damageTypes, bool isAttackAPhysicalObject, 

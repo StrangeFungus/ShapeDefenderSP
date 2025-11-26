@@ -6,7 +6,6 @@ using UnityEngine;
 public class StatEntryManager : MonoBehaviour, IStatEntryManager
 {
     private static StatEntryManager Instance { get; set; }
-
     private static Dictionary<StatName, StatModificationAction> howToApplyStatReductions = new();
     private static Dictionary<StatName, StatModificationAction> howToRemoveStatReductionsOrLevelUp = new();
 
@@ -58,13 +57,13 @@ public class StatEntryManager : MonoBehaviour, IStatEntryManager
         }
     }
 
-    public void ApplyEnemyStatReductions(StatEntryContainer targetStatEntryContainer, StatusEffectName statusEffectsName, int stackNumber, StatEntryModifier statEntryModifier)
+    public void ApplyEnemyStatReductions(EntityStatEntryContainer targetStatEntryContainer, StatusEffectEntry statusEffectEntry)
     {
         if (targetStatEntryContainer != null)
         {
-            foreach (var statEntry in targetStatEntryContainer.StatEntryDictionary)
+            foreach (var statReduction in statusEffectEntry.EffectsStats.StatReductionEntryDictionary)
             {
-                statEntry.Value.AddNewModifier(statusEffectsName, stackNumber, statEntryModifier);
+                targetStatEntryContainer.AddNewModifier(statusEffectEntry.StatusEffectsName, statReduction.Value.ModifyingValueTotal, statReduction.Value.ModifyingPercentTotal);
             }
         }
         else
@@ -73,20 +72,13 @@ public class StatEntryManager : MonoBehaviour, IStatEntryManager
         }
     }
 
-    public void RemoveEnemyStatReductions(StatEntryContainer targetStatEntryContainer, StatusEffectName statusEffectsName, int? stackNumber = null)
+    public void RemoveEnemyStatReductions(EntityStatEntryContainer targetStatEntryContainer, StatusEffectEntry statusEffectEntry, int stackNumber)
     {
         if (targetStatEntryContainer != null)
         {
-            foreach (var statEntry in targetStatEntryContainer.StatEntryDictionary)
+            foreach (var statReduction in statusEffectEntry.EffectsStats.StatReductionEntryDictionary)
             {
-                if (stackNumber != null)
-                {
-                    statEntry.Value.RemoveModifierStatusEffectStack(statusEffectsName, (int)stackNumber);
-                }
-                else
-                {
-                    statEntry.Value.RemoveModifierStatusEffect(statusEffectsName);
-                }
+                targetStatEntryContainer.RemoveModifierStatusEffectStack(statusEffectEntry.StatusEffectsName, stackNumber);
             }
         }
         else
@@ -103,7 +95,7 @@ public class StatEntryManager : MonoBehaviour, IStatEntryManager
         {
             foreach (var stat in statsDictionary)
             {
-                copiedDictionary.Add(stat.Key, StatEntry.CopyStatEntry(stat.Value));
+                copiedDictionary.Add(stat.Key, new StatEntry(stat.Key, stat.Value.BaseValue));
             }
         }
         else
@@ -114,71 +106,64 @@ public class StatEntryManager : MonoBehaviour, IStatEntryManager
         return copiedDictionary;
     }
 
+    // Level Up Stat Distribution Overview:
     // Entity Stats -> Attack Stats;
-    //                 Attack Stats -> Status Effect Stats;
-    //                 Attack Stats -> Area Of Effects Radius and Status Effects;
+    //                 Attack Stats -> Status Effects Stats;
+    //                                 Status Effects Stats -> Area Of Effects Stats;
+    //                 Attack Stats -> Area Of Effects Stats;
+    // We can do 10% of the starting value per level for now until I design a ScriptableObject for stat level ups for entity role types.
 
-    public void LevelUpStat(Dictionary<StatName, int> statNameAndNumOfLevelUpsDict, BaseEntityController baseEntityController)
+    public void LevelUpEntitiesStats(Dictionary<StatName, int> statNameAndNumOfLevelUpsDict, EntityStatEntryContainer entityStatEntryContainer, AttackEntryContainer attackEntryContainer)
     {
-        if (baseEntityController != null)
-        {
-            foreach (var stat in statNameAndNumOfLevelUpsDict)
-            {
-                if (stat.Key != StatName.Default)
-                {
-                    ProcessStatLevelUp(stat.Key, stat.Value, baseEntityController.EntitiesStats);
+        if (statNameAndNumOfLevelUpsDict == null) { return; }
 
-                    if (baseEntityController.EntitiesAttackContainer.AttackControllerDictionary != null)
-                    {
-                        foreach (var attackController in baseEntityController.EntitiesAttackContainer.AttackControllerDictionary)
-                        {
-                            LevelUpStat(statNameAndNumOfLevelUpsDict, attackController.Value);
-                        }
-                    }
+        if (statNameAndNumOfLevelUpsDict.Count <= 0) { return; }
+
+        foreach (var stat in statNameAndNumOfLevelUpsDict)
+        {
+            if (stat.Key != StatName.Default)
+            {
+                if (entityStatEntryContainer.StatEntryDictionary.TryGetValue(stat.Key, out StatEntry targetStatToLevel))
+                {
+                    StatModificationAction statModAction = howToRemoveStatReductionsOrLevelUp[stat.Key];
+                    float startingValue = targetStatToLevel.StartingBaseValue;
+                    targetStatToLevel.ModifyBaseValue(statModAction, (startingValue * statNameAndNumOfLevelUpsDict[stat.Key]) * GlobalCONSTValuesContainer.LEVELUPSTATMULTIPLIER);
+
+                    LevelUpAttacksStats(statNameAndNumOfLevelUpsDict, attackEntryContainer);
                 }
             }
         }
     }
 
-    public void LevelUpStat(Dictionary<StatName, int> statNameAndNumOfLevelUpsDictionary, BaseAttackController baseAttackController)
+    public void LevelUpAttacksStats(Dictionary<StatName, int> statNameAndNumOfLevelUpsDict, AttackEntryContainer attackEntryContainer)
     {
-        if (baseAttackController != null)
-        {
-            foreach (var stat in statNameAndNumOfLevelUpsDictionary)
-            {
-                if (stat.Key != StatName.Default)
-                {
-                    ProcessStatLevelUp(stat.Key, stat.Value, baseAttackController.AttacksEntry.AttacksStats);
+        if (statNameAndNumOfLevelUpsDict == null) { return; }
 
-                    if (baseAttackController.AttacksEntry.AttacksStatusEffects != null)
+        if (statNameAndNumOfLevelUpsDict.Count <= 0) { return; }
+
+        foreach (var stat in statNameAndNumOfLevelUpsDict)
+        {
+            if (stat.Key != StatName.Default)
+            {
+                foreach (var attackEntry in attackEntryContainer.AttackControllerDictionary)
+                {
+                    if (attackEntry.Value.AttacksEntry.EffectsStats.StatEntryDictionary.TryGetValue(stat.Key, out StatEntry targetStatToLevel))
                     {
-                        foreach (var effect in baseAttackController.AttacksEntry.AttacksStatusEffects.StatusEffectsDictionary)
+                        StatModificationAction statModAction = howToRemoveStatReductionsOrLevelUp[stat.Key];
+                        float startingValue = targetStatToLevel.StartingBaseValue;
+                        targetStatToLevel.ModifyBaseValue(statModAction, (startingValue * statNameAndNumOfLevelUpsDict[stat.Key]) * GlobalCONSTValuesContainer.LEVELUPSTATMULTIPLIER);
+
+                        if (attackEntry.Value.AttacksEntry.EffectsStatusEffects != null)
                         {
-                            ProcessStatLevelUp(stat.Key, stat.Value, effect.Value.StatusEffectsStats);
-                        }
-                    }
-                    
-                    if (baseAttackController.AttacksEntry.DoesAnAreaOfEffect && baseAttackController.AttacksEntry.AreaOfEffectPrefabController != null)
-                    {
-                        if (baseAttackController.AttacksEntry.AreaOfEffectPrefabController.AreaOfEffectsEntry.AreaOfEffectsStatusEffects != null)
-                        {
-                            if (stat.Key == StatName.AreaOfEffectRadiusValue)
+                            if (attackEntry.Value.AttacksEntry.EffectsStatusEffects.StatusEffectsDictionary.Count > 0)
                             {
-                                baseAttackController.AttacksEntry.AreaOfEffectPrefabController.AreaOfEffectsEntry.RadiusSize = stat.Value;
-                            }
-                            else
-                            {
-                                foreach (var effect in baseAttackController.AttacksEntry.AreaOfEffectPrefabController.AreaOfEffectsEntry.AreaOfEffectsStatusEffects.StatusEffectsDictionary)
-                                {
-                                    ProcessStatLevelUp(stat.Key, stat.Value, effect.Value.StatusEffectsStats);
-                                }
+                                LevelUpStatusEffectsStats(statNameAndNumOfLevelUpsDict, attackEntry.Value.AttacksEntry.EffectsStatusEffects);
                             }
                         }
 
-                        if (stat.Key == StatName.AreaOfEffectRadiusValue)
+                        if (attackEntry.Value.AttacksEntry.DoesAnAreaOfEffect && attackEntry.Value.AttacksEntry.AreaOfEffectPrefabController != null)
                         {
-                            float areaOfEffectRadius = baseAttackController.AttacksEntry.AttacksStats.StatEntryDictionary[StatName.AreaOfEffectRadiusValue].StatsTotalValue;
-                            baseAttackController.AttacksEntry.AreaOfEffectPrefabController.AreaOfEffectsEntry.RadiusSize = areaOfEffectRadius;
+                            LevelUpAreaOfEffectsStats(statNameAndNumOfLevelUpsDict, attackEntry.Value.AttacksEntry.AreaOfEffectPrefabController);
                         }
                     }
                 }
@@ -186,36 +171,61 @@ public class StatEntryManager : MonoBehaviour, IStatEntryManager
         }
     }
 
-    public void LevelUpStat(Dictionary<StatName, int> statNameAndNumOfLevelUpsDict, StatusEffectEntryContainer statusEffectEntryContainer)
+    public void LevelUpStatusEffectsStats(Dictionary<StatName, int> statNameAndNumOfLevelUpsDict, StatusEffectEntryContainer statusEffectEntryContainer)
     {
-        if (statusEffectEntryContainer != null)
+        if (statNameAndNumOfLevelUpsDict == null) { return; }
+
+        if (statNameAndNumOfLevelUpsDict.Count <= 0) { return; }
+
+        foreach (var stat in statNameAndNumOfLevelUpsDict)
         {
-            foreach (var stat in statNameAndNumOfLevelUpsDict)
+            if (stat.Key != StatName.Default)
             {
-                if (stat.Key != StatName.Default)
+                foreach (var statusEffect in statusEffectEntryContainer.StatusEffectsDictionary)
                 {
-                    foreach (var statusEffect in statusEffectEntryContainer.StatusEffectsDictionary)
+                    if (statusEffect.Value.EffectsStats.StatEntryDictionary.TryGetValue(stat.Key, out StatEntry targetStatToLevel))
                     {
-                        ProcessStatLevelUp(stat.Key, stat.Value, statusEffect.Value.StatusEffectsStats);
+                        StatModificationAction statModAction = howToRemoveStatReductionsOrLevelUp[stat.Key];
+                        float startingValue = targetStatToLevel.StartingBaseValue;
+                        targetStatToLevel.ModifyBaseValue(statModAction, (startingValue * statNameAndNumOfLevelUpsDict[stat.Key]) * GlobalCONSTValuesContainer.LEVELUPSTATMULTIPLIER);
+
+                        if (statusEffect.Value.DoesAnAreaOfEffect && statusEffect.Value.AreaOfEffectPrefabController != null)
+                        {
+                            LevelUpAreaOfEffectsStats(statNameAndNumOfLevelUpsDict, statusEffect.Value.AreaOfEffectPrefabController);
+                        }
                     }
                 }
             }
         }
     }
 
-    private void ProcessStatLevelUp(StatName statsName, int numberOfLevelUps, StatEntryContainer statEntryContainer)
+    public void LevelUpAreaOfEffectsStats(Dictionary<StatName, int> statNameAndNumOfLevelUpsDict, AreaOfEffectController areaOfEffectController)
     {
-        if (statEntryContainer.StatEntryDictionary != null)
+        if (statNameAndNumOfLevelUpsDict == null) { return; }
+
+        if (statNameAndNumOfLevelUpsDict.Count <= 0) { return; }
+
+        foreach (var stat in statNameAndNumOfLevelUpsDict)
         {
-            if (statEntryContainer.StatEntryDictionary.Count > 0)
+            if (stat.Key != StatName.Default)
             {
-                // We can do 10% of the starting value per level for now until I design a ScriptableObject for stat level ups for entity role types.
+                if (areaOfEffectController.AttacksEntry.EffectsStats.StatEntryDictionary.TryGetValue(stat.Key, out StatEntry targetStatToLevel))
+                {
+                    StatModificationAction statModAction = howToRemoveStatReductionsOrLevelUp[stat.Key];
+                    float startingValue = targetStatToLevel.StartingBaseValue;
+                    targetStatToLevel.ModifyBaseValue(statModAction, (startingValue * statNameAndNumOfLevelUpsDict[stat.Key]) * GlobalCONSTValuesContainer.LEVELUPSTATMULTIPLIER);
 
-                StatModificationAction statModAction = howToRemoveStatReductionsOrLevelUp[statsName];
-                float startingValue = statEntryContainer.StatEntryDictionary[statsName].StartingBaseValue;
-                float percentToLevelUpBy = 0.1f;
-
-                statEntryContainer.GetStatEntry(statsName).ModifyBaseValue(statModAction, (startingValue * numberOfLevelUps) * percentToLevelUpBy);
+                    if (!areaOfEffectController.AreaOfEffectsEntry.FollowsAttackProjectile)
+                    {
+                        if (areaOfEffectController.AttacksEntry.EffectsStatusEffects != null)
+                        {
+                            if (areaOfEffectController.AttacksEntry.EffectsStatusEffects.StatusEffectsDictionary.Count > 0)
+                            {
+                                LevelUpStatusEffectsStats(statNameAndNumOfLevelUpsDict, areaOfEffectController.AttacksEntry.EffectsStatusEffects);
+                            }
+                        }
+                    }
+                }
             }
         }
     }

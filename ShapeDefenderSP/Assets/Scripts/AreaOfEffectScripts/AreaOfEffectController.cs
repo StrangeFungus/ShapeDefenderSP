@@ -1,113 +1,121 @@
 using System.Collections;
-using System.Collections.Generic;
 using SDSPEnums;
 using Unity.VisualScripting;
 using UnityEngine;
-using static UnityEngine.Rendering.DebugUI;
+using UnityEngine.InputSystem.XR;
+using UnityEngine.UIElements;
 
-public class AreaOfEffectController : MonoBehaviour
+public class AreaOfEffectController : BaseAttackController
 {
+    // MAIN AREA OF EFFECT PREFAB DATA
     [SerializeField] private AreaOfEffectEntry areaOfEffectsEntry;
     public AreaOfEffectEntry AreaOfEffectsEntry => areaOfEffectsEntry;
 
-    private float timesEffectWasReflected = 0;
-    public float TimesEffectWasReflected { get { return timesEffectWasReflected; } set { timesEffectWasReflected++; } }
-    public bool FinishLifecycle { get; set; } = false;
+    [SerializeField] private BaseAttackController parentAttacksController;
+    public BaseAttackController ParentAttacksController { get => parentAttacksController; set => parentAttacksController = value; }
 
-    // TARGETING DATA
-    [SerializeField] private BaseAttackController attacksController;
-    public BaseAttackController AttacksController => attacksController;
-
-    // TRACKING DATA
-    public Vector3 StartingLocation { get; set; }
-
-    private IDefenseSequenceManager iDefenseSequenceManager;
-
-    private void Awake()
+    // I need to go through the attack entry and the area of effect entry settings and design functions to reflect the types of actions-
+    // it takes that would be different from the behaviour of an attack.
+    // Examples being things like following an object.
+    private new void Awake()
     {
-        iDefenseSequenceManager ??= InterfaceContainer.Request<IDefenseSequenceManager>();
+        base.Awake();
         areaOfEffectsEntry.OnAwake();
     }
 
-    private void Start()
+    private new void Start()
     {
-        StartingLocation = gameObject.transform.position;
-
-        if (areaOfEffectsEntry.AttackingEntitiesController != null)
-        {
-            areaOfEffectsEntry.ParentsTagType = gameObject.tag;
-        }
-        else
-        {
-            Debug.Log($"AttacksEntry.AttackingEntitiesController was null for the attacks controller target data.");
-        }
+        base.Start();
+        ValidateAndSetUpAOECollider();
     }
 
-    private void OnTriggerEnter2D(Collider2D collision)
+    private void ValidateAndSetUpAOECollider()
     {
-        if (!collision.gameObject.CompareTag(areaOfEffectsEntry.ParentsTagType))
+        float areaOfEffectRadius = areaOfEffectsEntry.RadiusSize + attacksEntry.EffectsStats.GetStatEntriesTotalValue(StatName.AreaOfEffectRadiusValue);
+        switch (areaOfEffectsEntry.AreaOfEffectType)
         {
-            if (collision.gameObject.TryGetComponent<BaseEntityController>(out var baseEntityController))
-            {
-                if (areaOfEffectsEntry.DoesDamageOverTime)
+            case AreaOfEffectType.Square:
+                if (TryGetComponent<BoxCollider2D>(out var boxCollider2D))
                 {
-                    iDefenseSequenceManager.ApplyDamageOverTime(this, baseEntityController);
+                    if (boxCollider2D == null)
+                    {
+                        boxCollider2D = gameObject.AddComponent<BoxCollider2D>();
+                    }
+
+                    boxCollider2D.isTrigger = true;
+                    boxCollider2D.size = new Vector2(areaOfEffectRadius * 2f, areaOfEffectRadius * 2f);
+                    areaOfEffectsEntry.HasColliderBeenValidated = true;
                 }
-                else
+                break;
+
+            case AreaOfEffectType.HorizontalBar:
+                if (TryGetComponent<CapsuleCollider2D>(out var horzCapsuleCollider2D))
                 {
-                    iDefenseSequenceManager.AttemptToDamageTarget(this, baseEntityController);
+                    if (horzCapsuleCollider2D == null)
+                    {
+                        horzCapsuleCollider2D = gameObject.AddComponent<CapsuleCollider2D>();
+                    }
+
+                    horzCapsuleCollider2D.isTrigger = true;
+                    horzCapsuleCollider2D.direction = CapsuleDirection2D.Horizontal;
+                    horzCapsuleCollider2D.size = new Vector2(areaOfEffectRadius * 2f, areaOfEffectRadius * 0.5f);
+                    areaOfEffectsEntry.HasColliderBeenValidated = true;
                 }
-            }
-        }
+                break;
 
-        CheckIfAreaOfEffectShouldFinishLifeCycle();
+            case AreaOfEffectType.VerticalBar:
+                if (TryGetComponent<CapsuleCollider2D>(out var vertCapsuleCollider2D))
+                {
+                    if (vertCapsuleCollider2D == null)
+                    {
+                        vertCapsuleCollider2D = gameObject.AddComponent<CapsuleCollider2D>();
+                    }
+
+                    vertCapsuleCollider2D.isTrigger = true;
+                    vertCapsuleCollider2D.direction = CapsuleDirection2D.Vertical;
+                    vertCapsuleCollider2D.size = new Vector2(areaOfEffectRadius * 0.5f, areaOfEffectRadius * 2f);
+                    areaOfEffectsEntry.HasColliderBeenValidated = true;
+                }
+                break;
+
+            case AreaOfEffectType.Circle:
+                if (TryGetComponent<CircleCollider2D>(out var circleCollider2D))
+                {
+                    if (circleCollider2D == null)
+                    {
+                        circleCollider2D = gameObject.AddComponent<CircleCollider2D>();
+                    }
+
+                    circleCollider2D.isTrigger = true;
+                    circleCollider2D.radius = areaOfEffectRadius;
+                    areaOfEffectsEntry.HasColliderBeenValidated = true;
+                }
+                break;
+
+            default:
+                Debug.LogError($"Failed to set up {areaOfEffectsEntry.AreaOfEffectType} collider for {gameObject.name}");
+                StartCoroutine(FinishAttacksLifetime(0.0f));
+                break;
+        }
     }
 
-    private void OnTriggerExit2D(Collider2D collision)
-    {
-        if (collision.gameObject.TryGetComponent<BaseEntityController>(out var baseEntityController))
-        {
-            if (areaOfEffectsEntry.DoesDamageOverTime)
-            {
-                iDefenseSequenceManager.RemoveDamageOverTime(this, baseEntityController);
-            }
-        }
-    }
-
-    public void CopyControllerData(BaseAttackController controllerToCopy)
+    public void CopyAreaOfEffectsControllerData(AreaOfEffectController controllerToCopy)
     {
         IsAttackAbleToBeUsed = controllerToCopy.IsAttackAbleToBeUsed;
         iDefenseSequenceManager = controllerToCopy.iDefenseSequenceManager;
         attacksEntry = AttackEntry.CopyAttackEntry(controllerToCopy.AttacksEntry);
         timesAttackWasReflected = controllerToCopy.timesAttackWasReflected;
         HasMadeFinalHit = controllerToCopy.HasMadeFinalHit;
-        AttacksEntry.AttackingEntitiesController = controllerToCopy.AttacksEntry.AttackingEntitiesController;
     }
 
-    public void ResetAttacksController()
+    public void ResetAreaOfEffectsController()
     {
         attacksEntry.ResetToDefaults();
         timesAttackWasReflected = 0;
         HasMadeFinalHit = false;
         AttacksEntry.AttackingEntitiesController = null;
-    }
 
-    private void CheckIfAreaOfEffectShouldFinishLifeCycle()
-    {
-        float distanceFromStart = Vector2.Distance(transform.position, StartingLocation);
-
-        if (HasMadeFinalHit ||
-            attacksEntry.CanProjectileBeReflected && TimesAttackWasReflected >= attacksEntry.MaxAllowedReflections ||
-            distanceFromStart >= attacksEntry.AttacksStats.GetStatEntriesTotalValue(StatName.AttackRangeValue) * attacksEntry.MaxTravelDistanceMultiplier)
-        {
-            StartCoroutine(FinishAttacksLifetime(attacksEntry.DestroyDelayTimer));
-        }
-    }
-
-    private IEnumerator FinishAttacksLifetime(float destroyDelayTimer)
-    {
-        yield return new WaitForSeconds(destroyDelayTimer);
-
-        Destroy(gameObject);
+        areaOfEffectsEntry.ResetDefaultRadius();
+        AttacksEntry.ResetToDefaults();
     }
 }

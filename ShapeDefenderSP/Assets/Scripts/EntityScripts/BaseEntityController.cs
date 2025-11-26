@@ -36,9 +36,6 @@ public class BaseEntityController : MonoBehaviour
     private Dictionary<StatusEffectName, List<StatusEffectEntry>> entitiesActiveStatusEffects = new();
     public Dictionary<StatusEffectName, List<StatusEffectEntry>> EntitiesActiveStatusEffects { get => entitiesActiveStatusEffects; set => entitiesActiveStatusEffects = value; }
 
-    private Dictionary<StatusEffectName, bool> entitiesRunningStatusEffectsCoroutines = new();
-    public Dictionary<StatusEffectName, bool> EntitiesRunningStatusEffectsCoroutines { get => entitiesRunningStatusEffectsCoroutines; set => entitiesRunningStatusEffectsCoroutines = value; }
-    
     // ACTION RESTRICTIONS
     [SerializeField] protected bool canEntityMove = true;
     public bool CanEntityMove { get { return canEntityMove; } set { canEntityMove = value; } }

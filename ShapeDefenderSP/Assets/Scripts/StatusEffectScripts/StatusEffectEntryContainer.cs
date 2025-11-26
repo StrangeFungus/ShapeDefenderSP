@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using SDSPEnums;
 using UnityEngine;
 
-public class StatusEffectEntryContainer : MonoBehaviour
+public class StatusEffectEntryContainer
 {
     [SerializeField] private Dictionary<StatusEffectName, StatusEffectEntry> statusEffectsDictionary = new();
     public Dictionary<StatusEffectName, StatusEffectEntry> StatusEffectsDictionary => statusEffectsDictionary;
@@ -18,7 +18,7 @@ public class StatusEffectEntryContainer : MonoBehaviour
         }
     }
 
-    public static StatusEffectEntryContainer CopyStatusEffectEntryContainer(StatusEffectEntryContainer statusEffectEntryContainerToCopyFrom)
+    public void CopyStatusEffectEntryContainer(StatusEffectEntryContainer statusEffectEntryContainerToCopyFrom)
     {
         if (statusEffectEntryContainerToCopyFrom != null)
         {

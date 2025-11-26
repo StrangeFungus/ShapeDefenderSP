@@ -5,7 +5,7 @@ public interface IDefenseSequenceManager
 {
     void ActivateCombatCooldownCoroutines(BaseEntityController baseEntityController);
     void ApplyDamageOverTime(BaseAttackController baseAttackController, BaseEntityController targetEntitiesController);
-    void ApplyDamageOverTime(AreaOfEffectController areaOfEffectController, BaseEntityController targetEntitiesController);
+    void ApplyDamageOverTime(AreaOfEffectController areaOfEffectController, BaseEntityController targetEntitiesController = null);
     void ApplyDamageOverTime(BaseEntityController targetEntitiesController,
        StatusEffectEntryContainer statusEffectEntryContainerToApply, StatusEffectName statusEffectsName);
     void RemoveDamageOverTime(BaseAttackController baseAttackController, BaseEntityController targetEntitiesController);
