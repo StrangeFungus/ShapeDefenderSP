@@ -10,7 +10,7 @@ public class AttackEntryContainer
     [SerializeField] private List<AttackName> defaultAttacks;
 
     private Dictionary<AttackName, BaseAttackController> attackControllerDictionary = new();
-    public IReadOnlyDictionary<AttackName, BaseAttackController> AttackControllerDictionary => attackControllerDictionary;
+    public Dictionary<AttackName, BaseAttackController> AttackControllerDictionary { get => attackControllerDictionary; }
 
     private IAttackEntryManager iAttackEntryManager;
     private IStatEntryManager iStatEntryManager;
@@ -59,7 +59,6 @@ public class AttackEntryContainer
     {
         if (attackControllerDictionary.ContainsKey(attacksName))
         {
-            // I need to add this object back to the attack pool instead of destroying it.
             attackControllerDictionary.Remove(attacksName);
         }
     }

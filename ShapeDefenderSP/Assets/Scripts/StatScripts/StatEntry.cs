@@ -34,7 +34,7 @@ public class StatEntry
         }
     }
 
-    public void ModifyBaseValue(StatModificationAction statModificationAction, float incomingBaseValue = 0.0f)
+    public void ModifyBaseValue(StatModificationAction statModificationAction, float incomingBaseValue)
     {
         switch (statModificationAction)
         {
@@ -55,5 +55,7 @@ public class StatEntry
     public void ResetStatToStartingValues()
     {
         baseValue = startingBaseValue;
+        modifyingValueTotal = 0f;
+        modifyingPercentTotal = 0f;
     }
 }

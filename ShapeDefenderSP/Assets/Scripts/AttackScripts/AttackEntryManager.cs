@@ -97,17 +97,19 @@ public class AttackEntryManager : MonoBehaviour, IAttackEntryManager
         {
             if (!entitiesAttackContainer.AttackControllerDictionary.ContainsKey(attacksName))
             {
-                if (attackPrefabObjectPool.ContainsKey(attacksName))
+                if (!attackPrefabObjectPool.ContainsKey(attacksName))
                 {
-                    int poolCount = attackPrefabObjectPool[attacksName].Count;
-                    if (poolCount > 0)
-                    {
-                        BaseAttackController baseAttackController = attackPrefabObjectPool[attacksName][poolCount];
-                        baseAttackController.ResetAttacksController();
+                    attackPrefabObjectPool.Add(attacksName, new());
+                }
 
-                        entitiesAttackContainer.AddAttack(baseAttackController);
-                        attackPrefabObjectPool[attacksName].Remove(baseAttackController);
-                    }
+                int poolCount = attackPrefabObjectPool[attacksName].Count;
+                if (poolCount > 0)
+                {
+                    BaseAttackController baseAttackController = attackPrefabObjectPool[attacksName][poolCount];
+                    baseAttackController.ResetAttacksController();
+
+                    entitiesAttackContainer.AddAttack(baseAttackController);
+                    attackPrefabObjectPool[attacksName].Remove(baseAttackController);
                 }
                 else
                 {

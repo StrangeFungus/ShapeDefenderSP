@@ -59,8 +59,12 @@ public class AttackSequenceManager : MonoBehaviour, IAttackSequenceManager
                 }
                 else if (callingEntitiesController.CurrentTarget != null)
                 {
-                    float attackRange = baseAttackControllerToCopy.AttacksEntry.EffectsStats.GetStatEntriesTotalValue(StatName.AttackRangeValue);
-                    if (attackRange <= defaultShortestAttackRange) { attackRange = defaultShortestAttackRange; }
+                    float attackRange = defaultShortestAttackRange;
+                    if (baseAttackControllerToCopy.AttacksEntry.EffectsStats.StatEntryDictionary.TryGetValue(StatName.AttackRangeValue, out var attackRangeValueEntry))
+                    {
+                        attackRange = attackRangeValueEntry.CurrentValueTotal;
+                    }
+                    attackRange = Mathf.Max(defaultShortestAttackRange, attackRange);
 
                     float targetsDistance = Vector2.Distance(callingEntitiesController.transform.localPosition, callingEntitiesController.CurrentTarget.transform.localPosition);
                     if (targetsDistance <= attackRange)
@@ -84,9 +88,7 @@ public class AttackSequenceManager : MonoBehaviour, IAttackSequenceManager
 
             if (callingEntitiesController.EntitiesAttackContainer.AttackControllerDictionary != null)
             {
-                iAttackEntryManager.ProcessPendingAttackUpdates(callingEntitiesController);
-
-                foreach (var attack in callingEntitiesController.EntitiesAttackContainer.AttackControllerDictionary)
+                foreach (var attack in callingEntitiesController.EntitiesAttackContainer.AttackControllerDictionary.ToList())
                 {
                     if (callingEntitiesController.gameObject.activeSelf && !callingEntitiesController.IsEntityDead)
                     {
@@ -126,7 +128,7 @@ public class AttackSequenceManager : MonoBehaviour, IAttackSequenceManager
             while (Random.value <= currentMultistrikeChance && currentMultistrikeCount <= maxMultistrikeCount)
             {
                 // CALCULATE THE AMOUNT OF PROJECTILES PER ATTACK TO BE SPAWNED IN.
-                int projectileAmountToSpawn = CalculateIntStat(baseAttackControllerToCopy.AttacksEntry.EffectsStats, StatName.ProjectileCountValue);
+                int projectileAmountToSpawn = CalculateIntStat(baseAttackControllerToCopy.AttacksEntry.EffectsStats.StatEntryDictionary, StatName.ProjectileCountValue);
 
                 //CALCULATE THE OFFSET AND POSITION FOR THE UPCOMING SPAWNING PROJECTILES.
                 float initialOffset = 1.5f;
@@ -189,8 +191,10 @@ public class AttackSequenceManager : MonoBehaviour, IAttackSequenceManager
                             // 300% (-100%) = 2% chance (1% per 100% starting at this value)
 
                             // SETS TO VERY LOW NUMBER TO ENSURE NO CHANCE FOR ERRORS. NEEDED??
-                            StatEntry multistrikeChangeEntry = spawnedAttacksController.AttacksEntry.EffectsStats.GetStatEntry(StatName.MultistrikeChancePercent);
-                            multistrikeChangeEntry.ModifyBaseValue(StatModificationAction.SetValueTo, -(multistrikeChangeEntry.StatsTotalValue * 20.0f));
+                            if (spawnedAttacksController.AttacksEntry.EffectsStats.StatEntryDictionary.TryGetValue(StatName.MultistrikeChancePercent, out var multistrikeChanceEntry))
+                            {
+                                multistrikeChanceEntry.ModifyBaseValue(StatModificationAction.SetValueTo, -(multistrikeChanceEntry.CurrentValueTotal * 20.0f));
+                            }
                         }
 
                         CheckIfAttackSpawnsAreaOfEffectsOnSpawn(spawnedAttacksController);
@@ -198,12 +202,16 @@ public class AttackSequenceManager : MonoBehaviour, IAttackSequenceManager
                 }
 
                 currentMultistrikeCount++;
-                currentMultistrikeChance = CalculateMultistrikeChance(baseAttackControllerToCopy.AttacksEntry.EffectsStats, currentMultistrikeCount, maxMultistrikeCount);
+                currentMultistrikeChance = CalculateMultistrikeChance(baseAttackControllerToCopy.AttacksEntry.EffectsStats.StatEntryDictionary, currentMultistrikeCount, maxMultistrikeCount);
             }
 
             if (activateThisAttacksCooldown)
             {
-                float attackCooldownTime = baseAttackControllerToCopy.AttacksEntry.EffectsStats.GetStatEntriesTotalValue(StatName.AttackCooldownTimer);
+                float attackCooldownTime = defaultMinimumAllowedAttackSpeed;
+                if (baseAttackControllerToCopy.AttacksEntry.EffectsStats.StatEntryDictionary.TryGetValue(StatName.AttackCooldownTimer, out var attackCooldownTimerEntry))
+                {
+                    attackCooldownTime = attackCooldownTimerEntry.CurrentValueTotal;
+                }
                 attackCooldownTime = Mathf.Max(defaultMinimumAllowedAttackSpeed, attackCooldownTime);
 
                 StartCoroutine(StartAttackCooldown(callingEntitiesController, attacksName, attackCooldownTime));
@@ -243,21 +251,24 @@ public class AttackSequenceManager : MonoBehaviour, IAttackSequenceManager
 
     private int CalculateIntStat(Dictionary<StatName, StatEntry> statEntryDictionary, StatName statsName, bool truncateInt = true)
     {
-        float statsTotalValue = statEntryContainer.GetStatEntriesTotalValue(statsName);
-        if (statsTotalValue > 0.0f)
+        if (statEntryDictionary.TryGetValue(statsName, out var statEntryToCalculate))
         {
-            int wholeValue = (int)statsTotalValue;
-            float decimalValue = statsTotalValue - wholeValue;
-
-            if (!truncateInt)
+            float statsTotalValue = statEntryToCalculate.CurrentValueTotal;
+            if (statsTotalValue > 0.0f)
             {
-                if (decimalValue >= intStatRoundingCheckAmount)
+                int wholeValue = (int)statsTotalValue;
+                float decimalValue = statsTotalValue - wholeValue;
+
+                if (!truncateInt)
                 {
-                    wholeValue += 1;
+                    if (decimalValue >= intStatRoundingCheckAmount)
+                    {
+                        wholeValue += 1;
+                    }
                 }
+
+                return wholeValue;
             }
-            
-            return wholeValue;
         }
 
         return 0;
@@ -268,20 +279,23 @@ public class AttackSequenceManager : MonoBehaviour, IAttackSequenceManager
         float currentComboReduction = 1.0f;
         currentComboReduction -= (float)currentMultistrikeCount / (float)maxMultistrikeCount;
 
-        float chanceToAttackAgain = statEntryContainer.GetStatEntriesTotalValue(StatName.MultistrikeChancePercent) / 100.0f;
-        chanceToAttackAgain *= currentComboReduction;
-        chanceToAttackAgain = Mathf.Max(0, chanceToAttackAgain);
+        if (statEntryDictionary.TryGetValue(StatName.MultistrikeChancePercent, out var multistrikeChancePercent))
+        {
+            float chanceToAttackAgain = multistrikeChancePercent.CurrentValueTotal / 100.0f;
+            chanceToAttackAgain *= currentComboReduction;
+            chanceToAttackAgain = Mathf.Max(0, chanceToAttackAgain);
 
-        return chanceToAttackAgain;
+            return chanceToAttackAgain;
+        }
+
+        return 0.0f;
     }
 
     public void AttemptToCounterAttack(BaseEntityController callingEntitiesController)
     {
         if (callingEntitiesController.EntitiesAttackContainer.AttackControllerDictionary != null)
         {
-            iAttackEntryManager.ProcessPendingAttackUpdates(callingEntitiesController);
-
-            foreach (var attack in callingEntitiesController.EntitiesAttackContainer.AttackControllerDictionary)
+            foreach (var attack in callingEntitiesController.EntitiesAttackContainer.AttackControllerDictionary.ToList())
             {
                 if (callingEntitiesController.gameObject.activeSelf && !callingEntitiesController.IsEntityDead)
                 {

@@ -101,7 +101,7 @@ namespace SDSPEnums
     {
         AddToValue,
         SubtractFromValue,
-        SetValueTo
+        SetValueTo,
     }
 
     [Flags]

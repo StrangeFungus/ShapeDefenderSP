@@ -24,58 +24,17 @@ public class AttackEntry : BaseDamagingObjectEntry
     [SerializeField] private AreaOfEffectController areaOfEffectPrefabController;
     public AreaOfEffectController AreaOfEffectPrefabController => areaOfEffectPrefabController;
 
-    public static AttackEntry CopyAttackEntry(AttackEntry attackEntryToCopyFrom)
+    public void CopyAttackEntry(AttackEntry attackEntryToCopyFrom)
     {
-        if (attackEntryToCopyFrom == null) return null;
+        if (attackEntryToCopyFrom == null) { return; }
 
-        AttackEntry copy = new()
-        {
-            // GENERAL DATA
-            attacksName = attackEntryToCopyFrom.attacksName,
-            AttacksLevel = attackEntryToCopyFrom.AttacksLevel,
-            materialTypes = attackEntryToCopyFrom.materialTypes,
-
-            // HEALING SETTINGS
-            doesEffectHeal = attackEntryToCopyFrom.doesEffectHeal,
-            healingTypes = attackEntryToCopyFrom.healingTypes,
-            doesHealingCauseDamageToEnemies = attackEntryToCopyFrom.doesHealingCauseDamageToEnemies,
-
-            // DAMAGE SETTINGS
-            damageTypes = attackEntryToCopyFrom.damageTypes,
-            doesDamageIgnoresEnergyShields = attackEntryToCopyFrom.doesDamageIgnoresEnergyShields,
-            doesDamageOverTime = attackEntryToCopyFrom.doesDamageOverTime,
-
-            // ATTACKS GENERAL SETTINGS
-            isProjectileBlockable = attackEntryToCopyFrom.isProjectileBlockable,
-            canProjectileBeReflected = attackEntryToCopyFrom.canProjectileBeReflected,
-            maxAllowedReflections = attackEntryToCopyFrom.maxAllowedReflections,
-            canProjectileBeParried = attackEntryToCopyFrom.canProjectileBeParried,
-            canProjectileBeDodged = attackEntryToCopyFrom.canProjectileBeDodged,
-            blocksEnemiesAbilityToMove = attackEntryToCopyFrom.blocksEnemiesAbilityToMove,
-            blocksEnemiesAbilityToAttack = attackEntryToCopyFrom.blocksEnemiesAbilityToAttack,
-            blocksEnemiesAbilityToHeal = attackEntryToCopyFrom.blocksEnemiesAbilityToHeal,
-
-            // PROJECTILE SETTINGS
-            isEffectAPhysicalObject = attackEntryToCopyFrom.isEffectAPhysicalObject,
-            maxTravelDistanceMultiplier = attackEntryToCopyFrom.maxTravelDistanceMultiplier,
-            destroyDelayTimer = attackEntryToCopyFrom.destroyDelayTimer,
-            stopsAfterFinalHit = attackEntryToCopyFrom.stopsAfterFinalHit,
-
-            // COMPLEX ATTACK DATA PT1
-            doesAnAreaOfEffect = attackEntryToCopyFrom.doesAnAreaOfEffect,
-            areaOfEffectPrefabController = attackEntryToCopyFrom.areaOfEffectPrefabController,
-        };
-
-        // COMPLEX ATTACK DATA PT2
-        copy.effectsStats.CopyDamagingObjectStatEntryContainer(attackEntryToCopyFrom.effectsStats);
-        copy.effectsStatusEffects.CopyStatusEffectEntryContainer(attackEntryToCopyFrom.effectsStatusEffects);
+        effectsStats.CopyDamagingObjectStatEntryContainer(attackEntryToCopyFrom.effectsStats);
+        effectsStatusEffects.CopyStatusEffectEntryContainer(attackEntryToCopyFrom.effectsStatusEffects);
 
         if (attackEntryToCopyFrom.areaOfEffectPrefabController != null)
         {
-            copy.areaOfEffectPrefabController.CopyAreaOfEffectsControllerData(attackEntryToCopyFrom.areaOfEffectPrefabController);
+            areaOfEffectPrefabController.CopyAreaOfEffectsControllerData(attackEntryToCopyFrom.areaOfEffectPrefabController);
         }
-
-        return copy;
     }
 
     public void ResetToDefaults()

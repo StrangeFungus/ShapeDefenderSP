@@ -262,7 +262,7 @@ public class DefenseSequenceManager : MonoBehaviour, IDefenseSequenceManager
                         continue;
                     }
 
-                    float waitTime = attackDictEntry.Key.AttacksEntry.EffectsStats.GetStatEntriesTotalValue(StatName.DamageOverTimeHitRateTimer);
+                    float waitTime = attackDictEntry.Key.AttacksEntry.EffectsStats.GetStatsCurrentTotal(StatName.DamageOverTimeHitRateTimer, false);
 
                     if (Time.time - target.Value >= waitTime)
                     {
@@ -314,7 +314,7 @@ public class DefenseSequenceManager : MonoBehaviour, IDefenseSequenceManager
                         continue;
                     }
 
-                    float waitTime = areaOfEffect.Key.AttacksEntry.EffectsStats.GetStatEntriesTotalValue(StatName.DamageOverTimeHitRateTimer);
+                    float waitTime = areaOfEffect.Key.AttacksEntry.EffectsStats.GetStatsCurrentTotal(StatName.DamageOverTimeHitRateTimer, false);
 
                     if (Time.time - target.Value >= waitTime)
                     {
@@ -365,7 +365,7 @@ public class DefenseSequenceManager : MonoBehaviour, IDefenseSequenceManager
                         continue;
                     }
 
-                    float waitTime = statusEffect.Key.EffectsStats.GetStatEntriesTotalValue(StatName.DamageOverTimeHitRateTimer);
+                    float waitTime = statusEffect.Key.EffectsStats.GetStatsCurrentTotal(StatName.DamageOverTimeHitRateTimer, false);
 
                     if (Time.time - statusEffect.Value >= waitTime)
                     {
@@ -390,22 +390,28 @@ public class DefenseSequenceManager : MonoBehaviour, IDefenseSequenceManager
     public void AttemptToDamageTarget(BaseAttackController baseAttackController, BaseEntityController targetEntitiesController)
     {
         CalculateAttackSequencePrechecks(targetEntitiesController, out float targetsCritHitResist, out float targetsCritDamResist);
-        CalculateAttackSequence(baseAttackController.AttacksEntry.EffectsStats, targetsCritHitResist, targetsCritDamResist, out float attacksDamageAmount, out bool wasTheAttackACrit);
-        AttemptToDefendDamage(baseAttackController, targetEntitiesController, attacksDamageAmount, wasTheAttackACrit);
+        CalculateAttackSequence(baseAttackController.AttacksEntry.EffectsStats.StatEntryDictionary, targetsCritHitResist, targetsCritDamResist, out float attacksDamageAmount, out bool wasTheAttackACrit);
+        AttemptToDefendDamage(baseAttackController.AttacksEntry.DamageTypes, baseAttackController.AttacksEntry.IsProjectileBlockable, baseAttackController.AttacksEntry.IsEffectAPhysicalObject,
+            baseAttackController.AttacksEntry.EffectsStatusEffects, baseAttackController.AttacksEntry.EffectsStats, attacksDamageAmount, wasTheAttackACrit, baseAttackController.AttacksEntry.DoesDamageIgnoresEnergyShields,
+            baseAttackController.AttacksEntry.DoesAnAreaOfEffect, baseAttackController.AttacksEntry.AreaOfEffectPrefabController, targetEntitiesController, baseAttackController.gameObject, baseAttackController.AttacksEntry.AttackingEntitiesController);
     }
 
     public void AttemptToDamageTarget(AreaOfEffectController areaOfEffectController, BaseEntityController targetEntitiesController)
     {
         CalculateAttackSequencePrechecks(targetEntitiesController, out float targetsCritHitResist, out float targetsCritDamResist);
-        CalculateAttackSequence(areaOfEffectController.AttacksEntry.EffectsStats, targetsCritHitResist, targetsCritDamResist, out float attacksDamageAmount, out bool wasTheAttackACrit);
-        AttemptToDefendDamage(areaOfEffectController, targetEntitiesController, attacksDamageAmount, wasTheAttackACrit);
+        CalculateAttackSequence(areaOfEffectController.AttacksEntry.EffectsStats.StatEntryDictionary, targetsCritHitResist, targetsCritDamResist, out float attacksDamageAmount, out bool wasTheAttackACrit);
+        AttemptToDefendDamage(areaOfEffectController.AttacksEntry.DamageTypes, areaOfEffectController.AttacksEntry.IsProjectileBlockable, areaOfEffectController.AttacksEntry.IsEffectAPhysicalObject,
+            areaOfEffectController.AttacksEntry.EffectsStatusEffects, areaOfEffectController.AttacksEntry.EffectsStats, attacksDamageAmount, wasTheAttackACrit, areaOfEffectController.AttacksEntry.DoesDamageIgnoresEnergyShields,
+            areaOfEffectController.AttacksEntry.DoesAnAreaOfEffect, areaOfEffectController.AttacksEntry.AreaOfEffectPrefabController, targetEntitiesController, areaOfEffectController.gameObject, areaOfEffectController.AttacksEntry.AttackingEntitiesController);
     }
 
     public void AttemptToDamageTarget(StatusEffectEntry statusEffectEntry, BaseEntityController targetEntitiesController)
     {
         CalculateAttackSequencePrechecks(targetEntitiesController, out float targetsCritHitResist, out float targetsCritDamResist);
-        CalculateAttackSequence(statusEffectEntry.EffectsStats, targetsCritHitResist, targetsCritDamResist, out float attacksDamageAmount, out bool wasTheAttackACrit);
-        AttemptToDefendDamage(statusEffectEntry, targetEntitiesController, attacksDamageAmount, wasTheAttackACrit);
+        CalculateAttackSequence(statusEffectEntry.EffectsStats.StatEntryDictionary, targetsCritHitResist, targetsCritDamResist, out float attacksDamageAmount, out bool wasTheAttackACrit);
+        AttemptToDefendDamage(statusEffectEntry.DamageTypes, statusEffectEntry.IsProjectileBlockable, statusEffectEntry.IsEffectAPhysicalObject,
+            statusEffectEntry.EffectsStatusEffects, statusEffectEntry.EffectsStats, attacksDamageAmount, wasTheAttackACrit, statusEffectEntry.DoesDamageIgnoresEnergyShields,
+            statusEffectEntry.DoesAnAreaOfEffect, statusEffectEntry.AreaOfEffectPrefabController, targetEntitiesController, null, statusEffectEntry.AttackingEntitiesController);
     }
 
     private void CalculateAttackSequencePrechecks(BaseEntityController targetEntitiesController,
@@ -423,20 +429,20 @@ public class DefenseSequenceManager : MonoBehaviour, IDefenseSequenceManager
         }
     }
 
-    private void CalculateAttackSequence(StatEntryContainer statEntryContainerCausingDamage,
+    private void CalculateAttackSequence(Dictionary<StatName, StatEntry> statEntryDictionaryCausingDamage,
     float targetsCritHitChanceResist, float targetsCritHitDamResist, 
     out float attackDamage, out bool wasAttackACriticalHit)
     {
         attackDamage = 0.0f;
         wasAttackACriticalHit = false;
-        if (statEntryContainerCausingDamage != null)
+        if (statEntryDictionaryCausingDamage != null)
         {
-            attackDamage = CalculateBaseDamage(statEntryContainerCausingDamage);
-            float criticalHitChance = CalculateCriticalHitChance(statEntryContainerCausingDamage);
+            attackDamage = CalculateBaseDamage(statEntryDictionaryCausingDamage);
+            float criticalHitChance = CalculateCriticalHitChance(statEntryDictionaryCausingDamage);
 
             if (Random.value < (criticalHitChance - targetsCritHitChanceResist))
             {
-                attackDamage = CalculateCriticalHitDamage(statEntryContainerCausingDamage, attackDamage);
+                attackDamage = CalculateCriticalHitDamage(statEntryDictionaryCausingDamage, attackDamage);
                 float resistedDamage = attackDamage * (1f + targetsCritHitDamResist);
                 attackDamage -= resistedDamage;
                 wasAttackACriticalHit = true;
@@ -450,12 +456,12 @@ public class DefenseSequenceManager : MonoBehaviour, IDefenseSequenceManager
         }
     }
 
-    private float CalculateBaseDamage(StatEntryContainer statEntryContainer)
+    private float CalculateBaseDamage(DamagingObjectStatEntryContainer statEntryDictionary)
     {
-        float minAttackDam = statEntryContainer.GetStatEntriesTotalValue(StatName.MinimumAttackDamageValue);
+        float minAttackDam = statEntryDictionary.GetStatsCurrentTotal(StatName.MinimumAttackDamageValue, false);
         minAttackDam = Mathf.Max(0, minAttackDam);
 
-        float maxAttackDam = statEntryContainer.GetStatEntriesTotalValue(StatName.MaximumAttackDamageValue);
+        float maxAttackDam = statEntryDictionary.GetStatsCurrentTotal(StatName.MaximumAttackDamageValue, false);
         maxAttackDam = Mathf.Max(0, maxAttackDam);
 
         if (minAttackDam > maxAttackDam) { minAttackDam = maxAttackDam; }
@@ -464,17 +470,17 @@ public class DefenseSequenceManager : MonoBehaviour, IDefenseSequenceManager
         return damageToApply;
     }
 
-    private float CalculateCriticalHitChance(StatEntryContainer statEntryContainer)
+    private float CalculateCriticalHitChance(DamagingObjectStatEntryContainer statEntryDictionary)
     {
-        float chanceToCrit = statEntryContainer.GetStatEntriesTotalValue(StatName.CriticalHitChancePercent) / 100.0f;
+        float chanceToCrit = statEntryDictionary.GetStatsCurrentTotal(StatName.CriticalHitChancePercent, false) / 100.0f;
         chanceToCrit = Mathf.Max(0, chanceToCrit);
 
         return chanceToCrit;
     }
 
-    private float CalculateCriticalHitDamage(StatEntryContainer statEntryContainer, float damage)
+    private float CalculateCriticalHitDamage(DamagingObjectStatEntryContainer statEntryDictionary, float damage)
     {
-        float critHitDam = statEntryContainer.GetStatEntriesTotalValue(StatName.CriticalHitDamageMultiplier) / 100.0f;
+        float critHitDam = statEntryDictionary.GetStatsCurrentTotal(StatName.CriticalHitDamageMultiplier, false) / 100.0f;
         critHitDam = Mathf.Max(0, critHitDam);
 
         damage *= (1f + critHitDam);
@@ -482,44 +488,13 @@ public class DefenseSequenceManager : MonoBehaviour, IDefenseSequenceManager
         return damage;
     }
 
-    public void AttemptToDefendDamage(MonoBehaviour attackingMonobehaviour, BaseEntityController targetEntitiesController, float attackDamage, bool isDamageCritical)
+    public void AttemptToDefendDamage(DamageType damageTypes, bool isAttackBlockable, bool isAttackAPhysicalObject, StatusEffectEntryContainer attacksStatusEffectContainer,
+        DamagingObjectStatEntryContainer damagingObjectStatEntryContainer, float attackDamage, bool isDamageCritical, bool doesDamageIgnoreEnergyShields, bool doesAttackGenerateAnAOE, AreaOfEffectController areaOfEffectController,
+        BaseEntityController targetEntitiesController, GameObject attackingObject = null, BaseEntityController attackingEntitiesController = null)
     {
-        if (attackingMonobehaviour == null) { return; }
-        DamageType damageTypes = DamageType.Default;
-        bool isAttackBlockable = false;
-        bool isAttackAPhysicalObject = false;
-        StatusEffectEntryContainer attacksStatusEffectContainer = null;
-        StatEntryContainer attacksStatEntryContainer = null;
+        if (targetEntitiesController == null) { return; }
 
-        if (attackingMonobehaviour is BaseAttackController baseAttackController)
-        {
-            damageTypes = baseAttackController.AttacksEntry.DamageTypes;
-            isAttackBlockable = baseAttackController.AttacksEntry.IsProjectileBlockable;
-            isAttackAPhysicalObject = baseAttackController.AttacksEntry.IsEffectAPhysicalObject;
-            attacksStatusEffectContainer = baseAttackController.AttacksEntry.EffectsStatusEffects;
-            attacksStatEntryContainer = baseAttackController.AttacksEntry.EffectsStats;
-        }
-        else if (attackingMonobehaviour is AreaOfEffectController areaOfEffectController)
-        {
-            damageTypes = areaOfEffectController.AttacksEntry.DamageTypes;
-            isAttackBlockable = areaOfEffectController.AttacksEntry.IsProjectileBlockable;
-            isAttackAPhysicalObject = areaOfEffectController.AttacksEntry.IsEffectAPhysicalObject;
-            attacksStatusEffectContainer = areaOfEffectController.AttacksEntry.EffectsStatusEffects;
-            attacksStatEntryContainer = areaOfEffectController.AttacksEntry.EffectsStats;
-        }
-        else if (attackingMonobehaviour is StatusEffectEntry statusEffectEntry)
-        {
-            damageTypes = statusEffectEntry.DamageTypes;
-            isAttackBlockable = statusEffectEntry.IsDamageBlockable;
-            isAttackAPhysicalObject = statusEffectEntry.IsPhysicalObject;
-            attacksStatEntryContainer = statusEffectEntry.StatusEffectsStats;
-        }
-        else
-        {
-            return;
-        }
-
-        if (damageTypes.HasFlag(DamageType.Default) || attacksStatEntryContainer == null) { return; }
+        if (damageTypes.HasFlag(DamageType.Default) || damagingObjectStatEntryContainer == null) { return; }
 
         if (targetEntitiesController != null)
         {
@@ -531,14 +506,14 @@ public class DefenseSequenceManager : MonoBehaviour, IDefenseSequenceManager
             {
                 if (isAttackBlockable)
                 {
-                    if (isAttackAPhysicalObject)
+                    if (isAttackAPhysicalObject && attackingObject != null)
                     {
-                        wasAbleToParry = AttemptToParry(attackingMonobehaviour.gameObject, targetEntitiesController, ref attackDamage);
+                        wasAbleToParry = AttemptToParry(attackingObject, targetEntitiesController, ref attackDamage);
                     }
 
-                    if (!wasAbleToParry && attacksStatEntryContainer != null)
+                    if (!wasAbleToParry)
                     {
-                        wasAbleToBlock = AttemptToBlock(attacksStatEntryContainer, targetEntitiesController, ref attackDamage, attackingMonobehaviour.gameObject);
+                        wasAbleToBlock = AttemptToBlock(damagingObjectStatEntryContainer, targetEntitiesController, ref attackDamage, attackingObject);
                     }
                 }
 
@@ -558,20 +533,18 @@ public class DefenseSequenceManager : MonoBehaviour, IDefenseSequenceManager
                 }
                 else
                 {
-                    float targetEntitiesModifiedArmorValue = targetEntitiesController.EntitiesStats.GetStatEntriesTotalValue(StatName.ArmorValue);
+                    float targetEntitiesModifiedArmorValue = CalculateTargetsArmorValue(damagingObjectStatEntryContainer, targetEntitiesController);
 
-                    if (attacksStatEntryContainer != null)
+                    iHealthManager.ApplyDamageToTarget(doesDamageIgnoreEnergyShields, damageTypes, isAttackAPhysicalObject, attackDamage, isDamageCritical, targetEntitiesController, targetEntitiesModifiedArmorValue, attackingEntitiesController);
+
+                    if (doesAttackGenerateAnAOE)
                     {
-                        targetEntitiesModifiedArmorValue = CalculateTargetsArmorValue(attacksStatEntryContainer, targetEntitiesController);
+                        CheckIfAttackSpawnsAreaOfEffectsOnHit(areaOfEffectController, attackDamage, isDamageCritical);
                     }
-
-                    iHealthManager.ApplyDamageToTarget(attackingMonobehaviour, attackDamage, isDamageCritical, targetEntitiesController, targetEntitiesModifiedArmorValue);
-
-                    CheckIfAttackSpawnsAreaOfEffectsOnHit(attackingMonobehaviour, attackDamage, isDamageCritical);
 
                     if (attacksStatusEffectContainer != null)
                     {
-                        CheckIfAttackAppliesStatusEffects(attacksStatusEffectContainer, attacksStatEntryContainer, targetEntitiesController);
+                        CheckIfAttackAppliesStatusEffects(attacksStatusEffectContainer, damagingObjectStatEntryContainer, targetEntitiesController);
                     }
                 }
             }
@@ -615,7 +588,7 @@ public class DefenseSequenceManager : MonoBehaviour, IDefenseSequenceManager
         return false;
     }
 
-    private bool AttemptToBlock(StatEntryContainer attacksStatContainer, BaseEntityController targetEntitiesController, ref float attackDamage, GameObject attackingObject = null)
+    private bool AttemptToBlock(DamagingObjectStatEntryContainer attacksStatContainer, BaseEntityController targetEntitiesController, ref float attackDamage, GameObject attackingObject = null)
     {
         if (targetEntitiesController != null)
         {
@@ -632,13 +605,17 @@ public class DefenseSequenceManager : MonoBehaviour, IDefenseSequenceManager
 
                     if (attacksStatContainer != null)
                     {
-                        float reflectedAttackDamageMultiplier = attacksStatContainer.GetStatEntriesTotalValue(StatName.ReflectedAttackDamageMultiplier) / 100.0f;
+                        float reflectedAttackDamageMultiplier = attacksStatContainer.GetStatsCurrentTotal(StatName.ReflectedAttackDamageMultiplier, false) / 100.0f;
                         
-                        StatEntry minAttackDamageEntry = attacksStatContainer.GetStatEntry(StatName.MinimumAttackDamageValue);
-                        minAttackDamageEntry?.ModifyBaseValue(StatModificationAction.SetValueTo, minAttackDamageEntry.StatsTotalValue * reflectedAttackDamageMultiplier);
-                        
-                        StatEntry maxAttackDamageEntry = attacksStatContainer.GetStatEntry(StatName.MaximumAttackDamageValue);
-                        maxAttackDamageEntry?.ModifyBaseValue(StatModificationAction.SetValueTo, maxAttackDamageEntry.StatsTotalValue * reflectedAttackDamageMultiplier);
+                        if (attacksStatContainer.StatEntryDictionary.TryGetValue(StatName.MinimumAttackDamageValue, out var minAttackDamEntry))
+                        {
+                            minAttackDamEntry.ModifyBaseValue(StatModificationAction.SetValueTo, minAttackDamEntry.CurrentValueTotal * reflectedAttackDamageMultiplier);
+                        }
+
+                        if (attacksStatContainer.StatEntryDictionary.TryGetValue(StatName.MaximumAttackDamageValue, out var maxAttackDamEntry))
+                        {
+                            maxAttackDamEntry.ModifyBaseValue(StatModificationAction.SetValueTo, maxAttackDamEntry.CurrentValueTotal * reflectedAttackDamageMultiplier);
+                        }
 
                         attackingObject.transform.Rotate(0, 0, Random.Range(-45.0f, 45.0f));
 
@@ -685,41 +662,13 @@ public class DefenseSequenceManager : MonoBehaviour, IDefenseSequenceManager
         return false;
     }
 
-    private void CheckIfAttackSpawnsAreaOfEffectsOnHit(MonoBehaviour attacksMonobehaviour, float attackDamage, bool isDamageCritical)
+    private void CheckIfAttackSpawnsAreaOfEffectsOnHit(AreaOfEffectController areaOfEffectController, float attackDamage, bool isDamageCritical)
     {
-        if (attacksMonobehaviour != null)
+        if (areaOfEffectController != null)
         {
-            bool doesAttackGenerateAOEOnHit = false;
-            AreaOfEffectController areaOfEffectControllerToSpawn = null;
-
-            if (attacksMonobehaviour is BaseAttackController baseAttackController)
+            if (areaOfEffectController.AreaOfEffectsEntry.SpawnsWhenAttackHits)
             {
-                if (baseAttackController.AttacksEntry.DoesAnAreaOfEffect)
-                {
-                    doesAttackGenerateAOEOnHit = baseAttackController.AttacksEntry.AreaOfEffectPrefabController.AreaOfEffectsEntry.SpawnsWhenAttackHits;
-                    areaOfEffectControllerToSpawn = baseAttackController.AttacksEntry.AreaOfEffectPrefabController;
-                }
-            }
-            else if (attacksMonobehaviour is AreaOfEffectController areaOfEffectController)
-            {
-                doesAttackGenerateAOEOnHit = areaOfEffectController.AreaOfEffectsEntry.SpawnsWhenAttackHits;
-                areaOfEffectControllerToSpawn = areaOfEffectController;
-            }
-            else if (attacksMonobehaviour is StatusEffectEntry statusEffectEntry)
-            {
-                doesAttackGenerateAOEOnHit = statusEffectEntry.DoesAnAreaOfEffect;
-                areaOfEffectControllerToSpawn = statusEffectEntry.AreaOfEffectPrefabController;
-            }
-
-            if (doesAttackGenerateAOEOnHit)
-            {
-                if (areaOfEffectControllerToSpawn != null)
-                {
-                    if (areaOfEffectControllerToSpawn.AreaOfEffectsEntry.SpawnsWhenAttackHits)
-                    {
-                        iAreaOfEffectEntryManager.CalculateAndActivateAreaOfEffect(areaOfEffectControllerToSpawn);
-                    }
-                }
+                iAreaOfEffectEntryManager.CalculateAndActivateAreaOfEffect(areaOfEffectController, attackDamage, isDamageCritical);
             }
         }
     }

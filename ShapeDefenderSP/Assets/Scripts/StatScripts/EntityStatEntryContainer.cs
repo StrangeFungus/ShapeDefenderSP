@@ -5,18 +5,33 @@ using UnityEngine;
 using static UnityEngine.EventSystems.EventTrigger;
 
 [System.Serializable]
-public class EntityStatEntryContainer : BaseStatEntryContainer
+public class EntityStatEntryContainer
 {
+    [SerializeField] private StatDefaultTemplateSO defaultStatEntries;
+    private Dictionary<StatName, StatEntry> statEntryDictionary = new();
+    public Dictionary<StatName, StatEntry> StatEntryDictionary => statEntryDictionary;
+
     private class StatEntryModifier
     {
         public float modifyingValue;
         public float modifyingPercent;
     }
-    private Dictionary<StatusEffectName, Dictionary<int, StatEntryModifier>> statEntryModifiers = new();
+    private Dictionary<StatusEffectName, Dictionary<int, Dictionary<StatName, StatEntryModifier>>> statEntryModifiers = new();
 
-    public void InitializeEntityStatEntryContainer()
+    private IStatEntryManager IStatEntryManager => InterfaceContainer.Request<IStatEntryManager>();
+
+    public void InitializeStatEntryDict()
     {
-        InitializeStatEntryDict();
+        if (defaultStatEntries != null)
+        {
+            if (defaultStatEntries.StatEntries.Count > 0 && statEntryDictionary.Count == 0)
+            {
+                foreach (var entry in defaultStatEntries.StatEntries)
+                {
+                    AddStatEntry(entry);
+                }
+            }
+        }
 
         if (statEntryDictionary.TryGetValue(StatName.MaxHealthPointsValue, out var maxHpEntry))
         {
@@ -27,21 +42,64 @@ public class EntityStatEntryContainer : BaseStatEntryContainer
         }
     }
 
-    public void AddNewModifier(StatusEffectName statusEffectsName, float modifyingValue, float modifyingPercent)
+    public void AddStatEntry(StatEntry newStatEntry)
     {
-        if (!statEntryModifiers.ContainsKey(statusEffectsName))
+        if (!statEntryDictionary.ContainsKey(newStatEntry.StatsName))
         {
-            statEntryModifiers.Add(statusEffectsName, new());
-            statEntryModifiers[statusEffectsName].Add(1, new());
-            statEntryModifiers[statusEffectsName][1].modifyingValue = modifyingValue;
-            statEntryModifiers[statusEffectsName][1].modifyingPercent = modifyingPercent;
+            statEntryDictionary.Add(newStatEntry.StatsName, new StatEntry(newStatEntry.StatsName, newStatEntry.BaseValue));
         }
         else
         {
-            int stackNumber = statEntryModifiers[statusEffectsName].Count + 1;
+            StatModificationAction actionToTake = IStatEntryManager.GetActionForLevelingUp(newStatEntry.StatsName);
+            statEntryDictionary[newStatEntry.StatsName].ModifyBaseValue(actionToTake, newStatEntry.BaseValue);
+        }
+    }
+
+    public void RemoveStatEntry(StatName statName)
+    {
+        if (statEntryDictionary.ContainsKey(statName))
+        {
+            statEntryDictionary.Remove(statName);
+        }
+    }
+
+    public void AddNewModifier(StatusEffectName statusEffectsName, Dictionary<StatName, StatEntry> statReductionEntryDictionary)
+    {
+        int stackNumber = 1;
+        if (!statEntryModifiers.ContainsKey(statusEffectsName))
+        {
+            statEntryModifiers.Add(statusEffectsName, new());
             statEntryModifiers[statusEffectsName].Add(stackNumber, new());
-            statEntryModifiers[statusEffectsName][stackNumber].modifyingValue = modifyingValue;
-            statEntryModifiers[statusEffectsName][stackNumber].modifyingPercent = modifyingPercent;
+        }
+        else
+        {
+            stackNumber = statEntryModifiers[statusEffectsName].Count + 1;
+            statEntryModifiers[statusEffectsName].Add(stackNumber, new());
+        }
+
+        if (statReductionEntryDictionary != null)
+        {
+            foreach (var statReduction in statReductionEntryDictionary)
+            {
+                float reductionValue = 0;
+                float reductionPercent = 0;
+
+                if (statReduction.Key.ToString().EndsWith("Value"))
+                {
+                    reductionValue = statReduction.Value.CurrentValueTotal;
+                }
+                else if (statReduction.Key.ToString().EndsWith("Percent"))
+                {
+                    reductionPercent = statReduction.Value.CurrentValueTotal;
+                }
+
+                if (!statEntryModifiers[statusEffectsName][stackNumber].ContainsKey(statReduction.Key))
+                {
+                    statEntryModifiers[statusEffectsName][stackNumber].Add(statReduction.Key, new());
+                }
+                statEntryModifiers[statusEffectsName][stackNumber][statReduction.Key].modifyingValue = reductionValue;
+                statEntryModifiers[statusEffectsName][stackNumber][statReduction.Key].modifyingPercent = reductionPercent;
+            }
         }
     }
 
@@ -49,6 +107,15 @@ public class EntityStatEntryContainer : BaseStatEntryContainer
     {
         if (statEntryModifiers.ContainsKey(statusEffectsName))
         {
+            foreach (var statEntry in statEntryModifiers[statusEffectsName][stacksNumber])
+            {
+                if (statEntryDictionary.TryGetValue(statEntry.Key, out var currentStatEntry))
+                {
+                    currentStatEntry.ModifyingValueTotal -= statEntry.Value.modifyingValue;
+                    currentStatEntry.ModifyingPercentTotal -= statEntry.Value.modifyingPercent;
+                }
+            }
+
             if (statEntryModifiers[statusEffectsName].ContainsKey(stacksNumber))
             {
                 statEntryModifiers[statusEffectsName].Remove(stacksNumber);
@@ -77,6 +144,30 @@ public class EntityStatEntryContainer : BaseStatEntryContainer
         }
     }
 
+    public void ApplyStatReductions(StatusEffectEntry statusEffectEntry)
+    {
+        if (statusEffectEntry != null)
+        {
+            AddNewModifier(statusEffectEntry.StatusEffectsName, statusEffectEntry.EffectsStats.StatReductionEntryDictionary);
+        }
+        else
+        {
+            Debug.Log($"The targets stat entry container count was null... returning...");
+        }
+    }
+
+    public void RemoveStatReductions(StatusEffectEntry statusEffectEntry, int stackNumber)
+    {
+        if (statusEffectEntry != null)
+        {
+            RemoveModifierStatusEffectStack(statusEffectEntry.StatusEffectsName, stackNumber);
+        }
+        else
+        {
+            Debug.Log($"The targets stat entry container count was null... returning...");
+        }
+    }
+
     public void CopyEntityStatEntryContainer(EntityStatEntryContainer statEntryContainer)
     {
         if (statEntryContainer != null)
@@ -88,9 +179,21 @@ public class EntityStatEntryContainer : BaseStatEntryContainer
 
             foreach (var statusEffectEntry in statEntryContainer.statEntryModifiers)
             {
+                if (!statEntryModifiers.ContainsKey(statusEffectEntry.Key))
+                {
+                    statEntryModifiers.Add(statusEffectEntry.Key, new());
+                }
+
                 foreach (var stack in statusEffectEntry.Value)
                 {
-                    AddNewModifier(statusEffectEntry.Key, stack.Value.modifyingValue, stack.Value.modifyingPercent);
+                    statEntryModifiers[statusEffectEntry.Key].Add(stack.Key, new());
+
+                    foreach (var statReductionModifier in stack.Value)
+                    {
+                        statEntryModifiers[statusEffectEntry.Key][stack.Key].Add(statReductionModifier.Key, new());
+                        statEntryModifiers[statusEffectEntry.Key][stack.Key][statReductionModifier.Key].modifyingValue = statReductionModifier.Value.modifyingValue;
+                        statEntryModifiers[statusEffectEntry.Key][stack.Key][statReductionModifier.Key].modifyingPercent = statReductionModifier.Value.modifyingPercent;
+                    }
                 }
             }
         }

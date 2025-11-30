@@ -20,37 +20,7 @@ public class HealthManager : MonoBehaviour, IHealthManager
         InterfaceContainer.Register<IHealthManager>(this);
     }
 
-    public void ApplyDamageToTarget(BaseAttackController baseAttackController, float incomingDamageAmount, bool isDamageCritical,
-        BaseEntityController targetEntitiesController, float targetEntitiesModifiedArmorValue)
-    {
-        if (baseAttackController == null) { Debug.Log($"The attacks controller was null, returning..."); return; }
-        if (targetEntitiesController == null) { Debug.Log($"The targets controller was null, returning..."); return; }
-
-        FinalizeApplyDamageToTarget(baseAttackController.AttacksEntry.DoesDamageIgnoresEnergyShields, baseAttackController.AttacksEntry.DamageTypes, baseAttackController.AttacksEntry.IsEffectAPhysicalObject,
-            incomingDamageAmount, isDamageCritical, targetEntitiesController, targetEntitiesModifiedArmorValue, baseAttackController.AttacksEntry.AttackingEntitiesController);
-    }
-
-    public void ApplyDamageToTarget(AreaOfEffectController areaOfEffectController, float incomingDamageAmount, bool isDamageCritical,
-    BaseEntityController targetEntitiesController, float targetEntitiesModifiedArmorValue)
-    {
-        if (areaOfEffectController == null) { Debug.Log($"The area of effects controller was null, returning..."); return; }
-        if (targetEntitiesController == null) { Debug.Log($"The targets controller was null, returning..."); return; }
-
-        FinalizeApplyDamageToTarget(areaOfEffectController.AttacksEntry.DoesDamageIgnoresEnergyShields, areaOfEffectController.AttacksEntry.DamageTypes,
-                        areaOfEffectController.AttacksEntry.IsEffectAPhysicalObject, incomingDamageAmount, isDamageCritical, targetEntitiesController, targetEntitiesModifiedArmorValue, areaOfEffectController.AttacksEntry.AttackingEntitiesController);
-    }
-
-    public void ApplyDamageToTarget(StatusEffectEntry statusEffectEntry, float incomingDamageAmount, bool isDamageCritical,
-    BaseEntityController targetEntitiesController, float targetEntitiesModifiedArmorValue)
-    {
-        if (statusEffectEntry == null) { Debug.Log($"The status effect entry was null, returning..."); return; }
-        if (targetEntitiesController == null) { Debug.Log($"The targets controller was null, returning..."); return; }
-
-        FinalizeApplyDamageToTarget(statusEffectEntry.DoesDamageIgnoresEnergyShields, statusEffectEntry.DamageTypes, statusEffectEntry.IsEffectAPhysicalObject,
-            incomingDamageAmount, isDamageCritical, targetEntitiesController, targetEntitiesModifiedArmorValue, statusEffectEntry.AttackingEntitiesController);
-    }
-
-    private void FinalizeApplyDamageToTarget(bool doesDamageIgnoreEnergyShields, DamageType damageTypes, bool isAttackAPhysicalObject, 
+    public void ApplyDamageToTarget(bool doesDamageIgnoreEnergyShields, DamageType damageTypes, bool isAttackAPhysicalObject, 
         float incomingDamageAmount, bool isDamageCritical,
         BaseEntityController targetEntitiesController, float targetEntitiesModifiedArmorValue,
         BaseEntityController attackingEntitiesController = null)
@@ -60,7 +30,7 @@ public class HealthManager : MonoBehaviour, IHealthManager
         if (incomingDamageAmount <= 0 || targetEntitiesController.IsEntityDead) { Debug.Log($"Cannot damage target, returning..."); return; }
 
         float damageAppliedToEnergyShields = 0.0f;
-        float damageAppliedToOverHealHealthPoints = 0.0f;
+        float damageAppliedToOverhealHealthPoints = 0.0f;
         float damageAppliedToHealthPoints = 0.0f;
 
         if (!doesDamageIgnoreEnergyShields || !damageTypes.HasFlag(DamageType.True))
@@ -74,7 +44,7 @@ public class HealthManager : MonoBehaviour, IHealthManager
             incomingDamageAmount = Mathf.Max(0, incomingDamageAmount);
         }
 
-        CalculateAndRemoveLife(StatName.CurrentOverhealCapacityValue, targetEntitiesController, ref incomingDamageAmount, isDamageCritical, damageTypes, targetEntitiesModifiedArmorValue, doesDamageIgnoreEnergyShields, ref damageAppliedToOverHealHealthPoints);
+        CalculateAndRemoveLife(StatName.CurrentOverhealCapacityValue, targetEntitiesController, ref incomingDamageAmount, isDamageCritical, damageTypes, targetEntitiesModifiedArmorValue, doesDamageIgnoreEnergyShields, ref damageAppliedToOverhealHealthPoints);
 
         CalculateAndRemoveLife(StatName.CurrentHealthPointsValue, targetEntitiesController, ref incomingDamageAmount, isDamageCritical, damageTypes, targetEntitiesModifiedArmorValue, doesDamageIgnoreEnergyShields, ref damageAppliedToHealthPoints);
 
@@ -103,11 +73,11 @@ public class HealthManager : MonoBehaviour, IHealthManager
                     AddToEntitiesLife(attackingEntitiesController, healthPointsStolenAmount, isDamageCritical, HealingType.HealthPointRegen);
                 }
 
-                float overHealHealthPointsStolenAmount = damageAppliedToOverHealHealthPoints * healthPercentStolenOnHit;
+                float overhealHealthPointsStolenAmount = damageAppliedToOverhealHealthPoints * healthPercentStolenOnHit;
 
-                if (overHealHealthPointsStolenAmount > 0.0f)
+                if (overhealHealthPointsStolenAmount > 0.0f)
                 {
-                    AddToEntitiesLife(attackingEntitiesController, overHealHealthPointsStolenAmount, isDamageCritical, HealingType.OverHealthRegen);
+                    AddToEntitiesLife(attackingEntitiesController, overhealHealthPointsStolenAmount, isDamageCritical, HealingType.OverHealthRegen);
                 }
             }
         }

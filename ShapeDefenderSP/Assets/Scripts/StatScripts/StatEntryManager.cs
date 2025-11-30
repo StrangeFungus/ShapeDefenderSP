@@ -57,34 +57,14 @@ public class StatEntryManager : MonoBehaviour, IStatEntryManager
         }
     }
 
-    public void ApplyEnemyStatReductions(EntityStatEntryContainer targetStatEntryContainer, StatusEffectEntry statusEffectEntry)
+    public StatModificationAction GetActionForLevelingUp(StatName statsName)
     {
-        if (targetStatEntryContainer != null)
+        if (howToRemoveStatReductionsOrLevelUp.TryGetValue(statsName, out StatModificationAction action))
         {
-            foreach (var statReduction in statusEffectEntry.EffectsStats.StatReductionEntryDictionary)
-            {
-                targetStatEntryContainer.AddNewModifier(statusEffectEntry.StatusEffectsName, statReduction.Value.ModifyingValueTotal, statReduction.Value.ModifyingPercentTotal);
-            }
+            return action;
         }
-        else
-        {
-            Debug.Log($"The targets stat entry container count was null... returning...");
-        }
-    }
 
-    public void RemoveEnemyStatReductions(EntityStatEntryContainer targetStatEntryContainer, StatusEffectEntry statusEffectEntry, int stackNumber)
-    {
-        if (targetStatEntryContainer != null)
-        {
-            foreach (var statReduction in statusEffectEntry.EffectsStats.StatReductionEntryDictionary)
-            {
-                targetStatEntryContainer.RemoveModifierStatusEffectStack(statusEffectEntry.StatusEffectsName, stackNumber);
-            }
-        }
-        else
-        {
-            Debug.Log($"The targets stat entry container count was null... returning...");
-        }
+        return StatModificationAction.AddToValue;
     }
 
     public Dictionary<StatName, StatEntry> CopyAStatDictionary(Dictionary<StatName, StatEntry> statsDictionary)

@@ -24,13 +24,10 @@ public class BaseAttackController : MonoBehaviour
 
     protected IDefenseSequenceManager iDefenseSequenceManager;
 
-    protected void Awake()
-    {
-        iDefenseSequenceManager ??= InterfaceContainer.Request<IDefenseSequenceManager>();
-    }
-
     protected void Start()
     {
+        iDefenseSequenceManager ??= InterfaceContainer.Request<IDefenseSequenceManager>();
+
         StartingLocation = gameObject.transform.position;
 
         if (AttacksEntry.AttackingEntitiesController != null)
@@ -77,11 +74,14 @@ public class BaseAttackController : MonoBehaviour
     public void CopyAttacksControllerData(BaseAttackController controllerToCopy)
     {
         IsAttackAbleToBeUsed = controllerToCopy.IsAttackAbleToBeUsed;
-        iDefenseSequenceManager = controllerToCopy.iDefenseSequenceManager;
-        attacksEntry = AttackEntry.CopyAttackEntry(controllerToCopy.AttacksEntry);
+        attacksEntry.CopyAttackEntry(controllerToCopy.AttacksEntry);
         timesAttackWasReflected = controllerToCopy.timesAttackWasReflected;
         HasMadeFinalHit = controllerToCopy.HasMadeFinalHit;
-        AttacksEntry.AttackingEntitiesController = controllerToCopy.AttacksEntry.AttackingEntitiesController;
+
+        if (AttacksEntry.AttackingEntitiesController == null && controllerToCopy.AttacksEntry.AttackingEntitiesController != null)
+        {
+            AttacksEntry.AttackingEntitiesController = controllerToCopy.AttacksEntry.AttackingEntitiesController;
+        }
     }
 
     public void ResetAttacksController()
@@ -95,10 +95,9 @@ public class BaseAttackController : MonoBehaviour
     protected void CheckIfAttackShouldFinishLifeCycle()
     {
         float distanceFromStart = Vector2.Distance(transform.position, StartingLocation);
-        
         if (HasMadeFinalHit ||
             attacksEntry.CanProjectileBeReflected && TimesAttackWasReflected >= attacksEntry.MaxAllowedReflections ||
-            distanceFromStart >= attacksEntry.EffectsStats.GetStatEntriesTotalValue(StatName.AttackRangeValue) * attacksEntry.MaxTravelDistanceMultiplier)
+            distanceFromStart >= attacksEntry.EffectsStats.GetStatsCurrentTotal(StatName.AttackRangeValue, false) * attacksEntry.MaxTravelDistanceMultiplier)
         {
             StartCoroutine(FinishAttacksLifetime(attacksEntry.DestroyDelayTimer));
         }
